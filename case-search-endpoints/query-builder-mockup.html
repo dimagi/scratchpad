@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Query Builder — UI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<!-- Font Awesome for matching CommCare icon style -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root {
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
+
+  /* CommCare HQ palette */
+  --bg: #f2f2f1;
+  --surface: #ffffff;
+  --surface-dim: #f8f8f7;
+  --border: #d6d6d4;
+  --border-light: #e8e8e6;
+  --text: #1c2126;
+  --text-dim: #685c53;
+  --text-muted: #9e9e9e;
+
+  --cc-primary: #5D70D2;
+  --cc-primary-hover: #4a5bb8;
+  --cc-primary-dim: rgba(93, 112, 210, 0.08);
+  --cc-success: #358623;
+  --cc-success-dim: rgba(53, 134, 35, 0.06);
+  --cc-danger: #E13019;
+  --cc-info: #01A2A9;
+  --cc-warning: #FEAF31;
+
+  /* Nesting depth colors — subtle left-border indicators */
+  --depth-0: var(--cc-primary);
+  --depth-1: #01A2A9;
+  --depth-2: #9060c8;
+  --depth-3: #b45309;
+
+  /* Type colors — muted, used sparingly for icons/badges */
+  --type-text: #01A2A9;
+  --type-number: #358623;
+  --type-date: #9060c8;
+  --type-datetime: #7048a0;
+  --type-geo: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c2126;
+    --surface: #272d33;
+    --surface-dim: #2c3239;
+    --border: rgba(255, 255, 255, 0.1);
+    --border-light: rgba(255, 255, 255, 0.06);
+    --text: #e8e6e3;
+    --text-dim: #a09890;
+    --text-muted: #6b6b6b;
+
+    --cc-primary: #8b9be8;
+    --cc-primary-hover: #7888e0;
+    --cc-primary-dim: rgba(139, 155, 232, 0.12);
+    --cc-success: #5cb849;
+    --cc-success-dim: rgba(92, 184, 73, 0.08);
+
+    --depth-0: #8b9be8;
+    --depth-1: #30d0d8;
+    --depth-2: #b88adf;
+    --depth-3: #ffaa44;
+
+    --type-text: #30d0d8;
+    --type-number: #5cb849;
+    --type-date: #b88adf;
+    --type-datetime: #a078d0;
+    --type-geo: #ffaa44;
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+/* ── Navbar ── */
+.navbar {
+  background: linear-gradient(#fdfdfd, #f4f4f4);
+  border-bottom: 1px solid #d5d5d5;
+  padding: 0 24px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .navbar {
+    background: linear-gradient(#2a3038, #252b31);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 15px;
+  color: #004ebc;
+  letter-spacing: -0.02em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .navbar-brand { color: var(--cc-primary); }
+}
+
+.navbar-crumbs {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.navbar-crumbs span { color: var(--text); font-weight: 500; }
+
+/* ── Page layout ── */
+.page-content {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 32px;
+}
+
+/* ── Section cards (like form builder panels) ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.panel-header i {
+  color: var(--cc-primary);
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+
+.panel-body {
+  padding: 16px;
+}
+
+/* ── Parameters section ── */
+.param-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.param-row + .param-row {
+  border-top: 1px solid var(--border-light);
+}
+
+.param-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.param-icon--text { background: var(--type-text); }
+.param-icon--number { background: var(--type-number); }
+.param-icon--date { background: var(--type-date); }
+.param-icon--datetime { background: var(--type-datetime); }
+.param-icon--geo { background: var(--type-geo); }
+
+.param-name {
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.param-type-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: var(--surface-dim);
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border-light);
+}
+
+.param-required {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cc-danger);
+}
+
+.param-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.param-actions button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.param-actions button:hover { color: var(--cc-danger); background: rgba(225,48,25,0.06); }
+
+/* Add button (green, like CommCare's "Add Question") */
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 4px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-add--green {
+  background: var(--cc-success);
+  color: white;
+}
+
+.btn-add--green:hover { background: #2d7320; }
+
+.btn-add--outline {
+  background: transparent;
+  color: var(--cc-primary);
+  border: 1px dashed var(--border);
+}
+
+.btn-add--outline:hover {
+  border-color: var(--cc-primary);
+  background: var(--cc-primary-dim);
+}
+
+/* ── Filter tree ── */
+.filter-tree {
+  position: relative;
+}
+
+/* A group node (AND / OR) */
+.group-node {
+  position: relative;
+  padding-left: 20px;
+}
+
+/* Vertical nesting line */
+.group-node::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 36px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 1px;
+}
+
+.group-node[data-depth="0"]::before { background: var(--depth-0); opacity: 0.3; }
+.group-node[data-depth="1"]::before { background: var(--depth-1); opacity: 0.3; }
+.group-node[data-depth="2"]::before { background: var(--depth-2); opacity: 0.3; }
+
+/* Group header row */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  margin-left: -20px;
+}
+
+.group-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.group-icon--and, .group-icon--or { background: var(--cc-primary); }
+
+.group-operator-toggle {
+  display: inline-flex;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.group-operator-toggle button {
+  padding: 3px 12px;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  background: var(--surface-dim);
+  color: var(--text-dim);
+  transition: background 0.12s, color 0.12s;
+}
+
+.group-operator-toggle button.active {
+  background: var(--cc-primary);
+  color: white;
+}
+
+.group-operator-toggle button:not(.active):hover {
+  background: var(--cc-primary-dim);
+  color: var(--cc-primary);
+}
+
+.group-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.group-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.group-actions button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: var(--font-body);
+}
+
+.group-actions button:hover { color: var(--cc-danger); background: rgba(225,48,25,0.06); }
+
+/* Group children container */
+.group-children {
+  padding: 4px 0 8px 0;
+}
+
+/* ── Condition row (leaf node) ── */
+.condition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  position: relative;
+}
+
+/* Horizontal connector line from vertical line to the condition */
+.condition-row::before {
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.group-node[data-depth="0"] > .group-children > .condition-row::before,
+.group-node[data-depth="0"] > .group-children > .group-node > .group-header::before {
+  background: var(--depth-0);
+  opacity: 0.3;
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.group-node[data-depth="1"] > .group-children > .condition-row::before,
+.group-node[data-depth="1"] > .group-children > .group-node > .group-header::before {
+  background: var(--depth-1);
+  opacity: 0.3;
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+/* Type icon on condition */
+.condition-type-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Field select */
+.field-select {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 110px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239e9e9e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 22px;
+}
+
+/* Operator select */
+.op-select {
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 100px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239e9e9e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 22px;
+}
+
+/* Value input area */
+.value-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.value-source-toggle {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  background: var(--surface-dim);
+  border-right: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.value-source-toggle button {
+  padding: 5px 7px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: color 0.12s, background 0.12s;
+  font-family: var(--font-body);
+}
+
+.value-source-toggle button.active {
+  color: var(--cc-primary);
+  background: var(--cc-primary-dim);
+}
+
+.value-source-toggle button:not(.active):hover {
+  color: var(--text);
+}
+
+.value-source-toggle button[title]::after { content: none; }
+
+.value-field {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  min-width: 100px;
+  outline: none;
+}
+
+.value-field::placeholder { color: var(--text-muted); }
+
+/* Parameter reference badge inside value field area */
+.value-param-ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  margin: 2px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.value-param-ref--param {
+  background: var(--cc-primary-dim);
+  color: var(--cc-primary);
+  border: 1px solid rgba(93, 112, 210, 0.2);
+}
+
+.value-param-ref--auto {
+  background: var(--cc-success-dim);
+  color: var(--cc-success);
+  border: 1px solid rgba(53, 134, 35, 0.15);
+}
+
+.value-param-ref i { font-size: 9px; }
+
+/* Condition delete button */
+.condition-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+
+.condition-delete:hover { color: var(--cc-danger); background: rgba(225,48,25,0.06); }
+
+/* ── Add condition buttons at bottom of group ── */
+.group-add-bar {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0 0 0;
+  position: relative;
+}
+
+/* Connector to the add bar */
+.group-add-bar::before {
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  opacity: 0.15;
+}
+
+.group-node[data-depth="0"] > .group-children > .group-add-bar::before { background: var(--depth-0); }
+.group-node[data-depth="1"] > .group-children > .group-add-bar::before { background: var(--depth-1); }
+
+/* ── Drop target indicator ── */
+.drop-target {
+  border: 1.5px dashed var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.drop-target:hover {
+  border-color: var(--cc-primary);
+  background: var(--cc-primary-dim);
+  color: var(--cc-primary);
+}
+
+/* ── Serialized output ── */
+.output-section { margin-top: 0; }
+
+.output-section details {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.output-section summary {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.output-section summary::-webkit-details-marker { display: none; }
+
+.output-section summary .arrow {
+  font-size: 10px;
+  transition: transform 0.15s;
+}
+
+.output-section details[open] summary .arrow {
+  transform: rotate(90deg);
+}
+
+.output-pre {
+  border-top: 1px solid var(--border-light);
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text);
+  overflow-x: auto;
+  max-height: 350px;
+}
+
+.output-pre .jk { color: var(--cc-primary); }
+.output-pre .js { color: var(--type-text); }
+
+@media (prefers-color-scheme: dark) {
+  .output-pre .js { color: var(--type-text); }
+}
+
+/* ── Mockup badge ── */
+.mockup-badge {
+  position: fixed;
+  top: 58px;
+  right: 16px;
+  background: var(--cc-warning);
+  color: #573b00;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel {
+  animation: fadeUp 0.3s ease-out both;
+}
+
+.panel:nth-child(2) { animation-delay: 0.05s; }
+.panel:nth-child(3) { animation-delay: 0.1s; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .page-content { padding: 16px; }
+  .condition-row { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="mockup-badge">UI Mockup</div>
+
+<nav class="navbar">
+  <div class="navbar-brand">CommCare HQ</div>
+  <div class="navbar-crumbs">
+    Data &rsaquo; Case Search &rsaquo; <span>Endpoint Configuration</span>
+  </div>
+</nav>
+
+<div class="page-content">
+
+  <!-- ── Parameters panel ── -->
+  <div class="panel">
+    <div class="panel-header">
+      <i class="fa-solid fa-sliders"></i>
+      Endpoint Parameters
+    </div>
+    <div class="panel-body">
+      <div class="param-row">
+        <div class="param-icon param-icon--text">
+          <i class="fa-solid fa-font"></i>
+        </div>
+        <span class="param-name">search_province</span>
+        <span class="param-type-label">text</span>
+        <span class="param-required">Required</span>
+        <div class="param-actions">
+          <button title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      </div>
+      <div class="param-row">
+        <div class="param-icon param-icon--number">
+          <i class="fa-solid fa-hashtag"></i>
+        </div>
+        <span class="param-name">min_age</span>
+        <span class="param-type-label">number</span>
+        <div class="param-actions">
+          <button title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      </div>
+      <div class="param-row">
+        <div class="param-icon param-icon--date">
+          <i class="fa-solid fa-calendar"></i>
+        </div>
+        <span class="param-name">cutoff_date</span>
+        <span class="param-type-label">date</span>
+        <div class="param-actions">
+          <button title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      </div>
+      <div style="padding-top: 10px;">
+        <button class="btn-add btn-add--green">
+          <i class="fa-solid fa-plus"></i> Add Parameter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filter tree panel ── -->
+  <div class="panel">
+    <div class="panel-header">
+      <i class="fa-solid fa-filter"></i>
+      Server-Side Filters
+    </div>
+    <div class="panel-body">
+      <div class="filter-tree">
+
+        <!-- Root AND group -->
+        <div class="group-node" data-depth="0">
+          <div class="group-header">
+            <div class="group-icon group-icon--and">
+              <i class="fa-solid fa-code-branch"></i>
+            </div>
+            <div class="group-operator-toggle">
+              <button class="active">AND</button>
+              <button>OR</button>
+            </div>
+            <span class="group-label">match all of the following</span>
+            <div class="group-actions">
+              <button><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+          </div>
+
+          <div class="group-children">
+
+            <!-- Condition 1: province exact_match param -->
+            <div class="condition-row">
+              <div class="condition-type-icon" style="background:var(--type-text)">
+                <i class="fa-solid fa-font"></i>
+              </div>
+              <select class="field-select">
+                <option selected>province</option>
+              </select>
+              <select class="op-select">
+                <option selected>exact match</option>
+              </select>
+              <div class="value-input-group">
+                <div class="value-source-toggle">
+                  <button title="Constant"><i class="fa-solid fa-quote-right"></i></button>
+                  <button class="active" title="Parameter"><i class="fa-solid fa-cube"></i></button>
+                  <button title="Auto-value"><i class="fa-solid fa-bolt"></i></button>
+                </div>
+                <span class="value-param-ref value-param-ref--param">
+                  <i class="fa-solid fa-cube"></i> search_province
+                </span>
+              </div>
+              <button class="condition-delete" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+
+            <!-- Condition 2: age >= param -->
+            <div class="condition-row">
+              <div class="condition-type-icon" style="background:var(--type-number)">
+                <i class="fa-solid fa-hashtag"></i>
+              </div>
+              <select class="field-select">
+                <option selected>age</option>
+              </select>
+              <select class="op-select">
+                <option selected>&ge; (gte)</option>
+              </select>
+              <div class="value-input-group">
+                <div class="value-source-toggle">
+                  <button title="Constant"><i class="fa-solid fa-quote-right"></i></button>
+                  <button class="active" title="Parameter"><i class="fa-solid fa-cube"></i></button>
+                  <button title="Auto-value"><i class="fa-solid fa-bolt"></i></button>
+                </div>
+                <span class="value-param-ref value-param-ref--param">
+                  <i class="fa-solid fa-cube"></i> min_age
+                </span>
+              </div>
+              <button class="condition-delete" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+
+            <!-- Nested OR group -->
+            <div class="group-node" data-depth="1">
+              <div class="group-header">
+                <div class="group-icon group-icon--or">
+                  <i class="fa-solid fa-code-branch"></i>
+                </div>
+                <div class="group-operator-toggle">
+                  <button>AND</button>
+                  <button class="active">OR</button>
+                </div>
+                <span class="group-label">match any of the following</span>
+                <div class="group-actions">
+                  <button><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+              </div>
+
+              <div class="group-children">
+
+                <!-- OR child 1: status = "active" (constant) -->
+                <div class="condition-row">
+                  <div class="condition-type-icon" style="background:var(--type-text)">
+                    <i class="fa-solid fa-font"></i>
+                  </div>
+                  <select class="field-select">
+                    <option selected>status</option>
+                  </select>
+                  <select class="op-select">
+                    <option selected>exact match</option>
+                  </select>
+                  <div class="value-input-group">
+                    <div class="value-source-toggle">
+                      <button class="active" title="Constant"><i class="fa-solid fa-quote-right"></i></button>
+                      <button title="Parameter"><i class="fa-solid fa-cube"></i></button>
+                      <button title="Auto-value"><i class="fa-solid fa-bolt"></i></button>
+                    </div>
+                    <input type="text" class="value-field" value="active" placeholder="value...">
+                  </div>
+                  <button class="condition-delete" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+
+                <!-- OR child 2: last_modified after today() (auto-value) -->
+                <div class="condition-row">
+                  <div class="condition-type-icon" style="background:var(--type-datetime)">
+                    <i class="fa-solid fa-calendar"></i>
+                  </div>
+                  <select class="field-select">
+                    <option selected>last_modified</option>
+                  </select>
+                  <select class="op-select">
+                    <option selected>after</option>
+                  </select>
+                  <div class="value-input-group">
+                    <div class="value-source-toggle">
+                      <button title="Constant"><i class="fa-solid fa-quote-right"></i></button>
+                      <button title="Parameter"><i class="fa-solid fa-cube"></i></button>
+                      <button class="active" title="Auto-value"><i class="fa-solid fa-bolt"></i></button>
+                    </div>
+                    <span class="value-param-ref value-param-ref--auto">
+                      <i class="fa-solid fa-bolt"></i> today()
+                    </span>
+                  </div>
+                  <button class="condition-delete" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+
+                <div class="group-add-bar">
+                  <button class="btn-add btn-add--green">
+                    <i class="fa-solid fa-plus"></i> Add Condition
+                  </button>
+                  <button class="btn-add btn-add--outline">
+                    <i class="fa-solid fa-code-branch"></i> Add Group
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add buttons for root group -->
+            <div class="group-add-bar">
+              <button class="btn-add btn-add--green">
+                <i class="fa-solid fa-plus"></i> Add Condition
+              </button>
+              <button class="btn-add btn-add--outline">
+                <i class="fa-solid fa-code-branch"></i> Add Group
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Serialized output ── -->
+  <div class="panel output-section">
+    <details>
+      <summary>
+        <span class="arrow">&#9654;</span>
+        <i class="fa-solid fa-code" style="color:var(--text-muted); font-size:12px;"></i>
+        Serialized Filter Spec (JSON)
+      </summary>
+      <pre class="output-pre">{
+  <span class="jk">"type"</span>: <span class="js">"and"</span>,
+  <span class="jk">"children"</span>: [
+    {
+      <span class="jk">"type"</span>: <span class="js">"component"</span>,
+      <span class="jk">"component"</span>: <span class="js">"exact_match"</span>,
+      <span class="jk">"field"</span>: <span class="js">"province"</span>,
+      <span class="jk">"inputs"</span>: {
+        <span class="jk">"value"</span>: { <span class="jk">"type"</span>: <span class="js">"parameter"</span>, <span class="jk">"ref"</span>: <span class="js">"search_province"</span> }
+      }
+    },
+    {
+      <span class="jk">"type"</span>: <span class="js">"component"</span>,
+      <span class="jk">"component"</span>: <span class="js">"gte"</span>,
+      <span class="jk">"field"</span>: <span class="js">"age"</span>,
+      <span class="jk">"inputs"</span>: {
+        <span class="jk">"value"</span>: { <span class="jk">"type"</span>: <span class="js">"parameter"</span>, <span class="jk">"ref"</span>: <span class="js">"min_age"</span> }
+      }
+    },
+    {
+      <span class="jk">"type"</span>: <span class="js">"or"</span>,
+      <span class="jk">"children"</span>: [
+        {
+          <span class="jk">"type"</span>: <span class="js">"component"</span>,
+          <span class="jk">"component"</span>: <span class="js">"exact_match"</span>,
+          <span class="jk">"field"</span>: <span class="js">"status"</span>,
+          <span class="jk">"inputs"</span>: {
+            <span class="jk">"value"</span>: { <span class="jk">"type"</span>: <span class="js">"constant"</span>, <span class="jk">"value"</span>: <span class="js">"active"</span> }
+          }
+        },
+        {
+          <span class="jk">"type"</span>: <span class="js">"component"</span>,
+          <span class="jk">"component"</span>: <span class="js">"after"</span>,
+          <span class="jk">"field"</span>: <span class="js">"last_modified"</span>,
+          <span class="jk">"inputs"</span>: {
+            <span class="jk">"value"</span>: { <span class="jk">"type"</span>: <span class="js">"auto_value"</span>, <span class="jk">"ref"</span>: <span class="js">"today()"</span> }
+          }
+        }
+      ]
+    }
+  ]
+}</pre>
+    </details>
+  </div>
+
+</div>
+
+</body>
+</html>
