@@ -19,7 +19,29 @@ integrations.
   multi-round-trip ID lookups)
 - Store case properties with their declared data types
 - Support append-only schema evolution (no rebuilds)
-- Serve as a backend for the configurable query builder
+- Serve as a backend for the configurable case search query builder
+
+## Implementation Layer: SQLAlchemy Core
+
+We use **SQLAlchemy Core** (not the ORM) for schema definition, DDL,
+and query construction. This is a natural fit because:
+
+- SQLAlchemy's `Table` / `Column` / `MetaData` API is designed for
+  programmatic schema definition
+- The expression language (`select()`, `where()`, `join()`) maps
+  cleanly to the filter spec tree and composes naturally
+- CommCare HQ already depends on SQLAlchemy — it's used extensively
+  by UCR (`corehq/apps/userreports/`) and has existing connection
+  infrastructure
+- Clean separation from Django-managed models avoids ambiguity about
+  what Django owns vs. what the project DB owns
+
+### Connection Management
+
+We use the existing `ConnectionManager` in `corehq/sql_db/connections.py`,
+which bridges Django database settings to SQLAlchemy engines. This gives
+us `connection_manager.get_engine()` pointed at the right database with
+no separate connection management.
 
 ## Data Model
 
@@ -29,50 +51,62 @@ Each case type in a project gets its own table. The table name is derived
 from the domain and case type (e.g., `projectdb_<domain>_<case_type>`,
 or a hash-based scheme to avoid name length issues).
 
+Tables are defined as SQLAlchemy `Table` objects bound to a `MetaData`
+instance:
+
+```python
+metadata = MetaData()
+
+patient_table = Table(
+    'projectdb_myproject_patient', metadata,
+    Column('case_id', Text, primary_key=True),
+    Column('owner_id', Text, nullable=False),
+    Column('case_name', Text),
+    Column('opened_on', DateTime(timezone=True)),
+    Column('closed_on', DateTime(timezone=True)),
+    Column('modified_on', DateTime(timezone=True)),
+    Column('closed', Boolean),
+    Column('external_id', Text),
+    Column('server_modified_on', DateTime(timezone=True)),
+    # Dynamic columns from data dictionary
+    Column('prop_first_name', Text),
+    Column('prop_dob', Text),
+    Column('prop_dob_date', Date),
+    Column('prop_age', Text),
+    Column('prop_age_numeric', Numeric),
+    Column('prop_risk_level', Text),
+    # FK to parent case type
+    Column('idx_parent', Text, ForeignKey('projectdb_myproject_household.case_id')),
+)
+```
+
 #### Fixed Columns (all tables)
 
 | Column          | Type        | Notes                                |
 |-----------------|-------------|--------------------------------------|
-| `case_id`       | UUID / text | Primary key                          |
-| `owner_id`      | text        | FK to users/groups/locations         |
-| `case_name`     | text        |                                      |
-| `opened_on`     | timestamptz |                                      |
-| `closed_on`     | timestamptz | Nullable                             |
-| `modified_on`   | timestamptz |                                      |
-| `closed`        | boolean     |                                      |
-| `external_id`   | text        | Nullable                             |
-| `server_modified_on` | timestamptz |                                 |
+| `case_id`       | Text        | Primary key                          |
+| `owner_id`      | Text        | FK to users/groups/locations         |
+| `case_name`     | Text        |                                      |
+| `opened_on`     | DateTime(tz)| Timestamp with timezone              |
+| `closed_on`     | DateTime(tz)| Nullable                             |
+| `modified_on`   | DateTime(tz)|                                      |
+| `closed`        | Boolean     |                                      |
+| `external_id`   | Text        | Nullable                             |
+| `server_modified_on` | DateTime(tz) |                                |
 
 #### Dynamic Columns (from data dictionary)
 
 Each case property declared in the data dictionary gets one or two
 columns:
 
-- **Raw column** (`prop_<name>`): always `text`, stores the original
+- **Raw column** (`prop_<name>`): always `Text`, stores the original
   value as-is
 - **Typed column** (`prop_<name>_<type>`): stores the value cast to its
-  declared type (`integer`, `numeric`, `date`, `timestamptz`, `boolean`).
+  declared type (`Numeric`, `Date`, `DateTime(timezone=True)`, `Boolean`).
   Null if the raw value can't be coerced.
 
 Text properties only get the raw column (no separate typed column
 needed).
-
-Example for a `patient` case type:
-
-```
-projectdb_myproject_patient
-├── case_id           UUID  PK
-├── owner_id          text
-├── case_name         text
-├── opened_on         timestamptz
-├── ...
-├── prop_first_name   text
-├── prop_dob          text
-├── prop_dob_date     date
-├── prop_age          text
-├── prop_age_numeric  numeric
-└── prop_risk_level   text
-```
 
 ### Relationships (Foreign Keys)
 
@@ -85,7 +119,7 @@ For a `patient` case type with a `parent` index pointing to `household`:
 ```
 projectdb_myproject_patient
 ├── ...
-├── idx_parent        text  FK → projectdb_myproject_household(case_id)
+├── idx_parent        Text  FK → projectdb_myproject_household(case_id)
 └── ...
 ```
 
@@ -110,6 +144,16 @@ projectdb_myproject_patient
 The **data dictionary** defines the expected schema: case types, their
 properties, property data types, and relationships between case types.
 
+### Schema Generation
+
+A `ProjectDBSchema` class reads from the data dictionary and produces
+SQLAlchemy `Table` objects. This is the single point of translation
+between data dictionary models and the database schema.
+
+```
+Data Dictionary → ProjectDBSchema → SQLAlchemy Table objects → DDL
+```
+
 ### Schema Evolution
 
 All schema changes are **append-only**:
@@ -127,18 +171,21 @@ being populated. This means:
 - Full table rebuilds are never required for schema changes
 - Data type recasting can be done with a SQL data migration if needed
 
-### Migration Generation
+### DDL Application
 
-When the data dictionary changes, we generate and apply Django
-migrations (or raw SQL via a management command). This could be:
+Schema changes are applied using SQLAlchemy's DDL capabilities:
 
-1. A Django `RunSQL` migration generated on the fly
-2. A custom migration framework outside Django's ORM (since these
-   tables don't correspond to Django models)
-3. Direct `ALTER TABLE` statements applied by a management command
+- **Table creation**: `metadata.create_all(engine)` creates tables that
+  don't yet exist (safe to call repeatedly — it's a no-op for existing
+  tables)
+- **Column additions**: `AddColumn` DDL construct, or direct
+  `ALTER TABLE ADD COLUMN` via `engine.execute()`
+- **Diffing**: Compare the current `Table` definition against the
+  database's actual schema (via `inspect(engine)`) to determine what
+  columns need to be added
 
-Option 2 or 3 seems more appropriate since these tables are
-project-specific and dynamic.
+This is outside Django's migration framework entirely — these tables
+are not Django models and don't appear in `makemigrations`.
 
 ## Population
 
@@ -148,10 +195,28 @@ Tables are populated from the change feed, similar to how UCR and ES
 pillows work today:
 
 1. Case change arrives via pillow / Kafka consumer
-2. Look up the table for this domain + case type
-3. Upsert the row: fixed columns from case metadata, dynamic columns
-   from case properties (with type coercion for typed columns)
+2. Look up the `Table` object for this domain + case type
+3. Upsert the row using SQLAlchemy's `insert().on_conflict_do_update()`:
+   fixed columns from case metadata, dynamic columns from case
+   properties (with type coercion for typed columns)
 4. Update FK columns from case indices
+
+```python
+stmt = insert(patient_table).values(
+    case_id=case.case_id,
+    owner_id=case.owner_id,
+    case_name=case.name,
+    prop_dob=case.get_case_property('dob'),
+    prop_dob_date=try_parse_date(case.get_case_property('dob')),
+    idx_parent=case.get_index('parent'),
+    ...
+)
+stmt = stmt.on_conflict_do_update(
+    index_elements=['case_id'],
+    set_={col.name: col for col in stmt.excluded},
+)
+engine.execute(stmt)
+```
 
 #### Write-Time Costs
 
@@ -183,27 +248,36 @@ populates the tables. This is similar to a UCR rebuild but simpler
 ### For Case Search (Query Builder)
 
 The project DB serves as a backend for the configurable query builder.
-The `SQLCaseSearchBackend` translates a filter spec tree into SQL:
+The `SQLCaseSearchBackend` translates a filter spec tree into
+SQLAlchemy expressions:
 
-- **AND/OR/NOT** → `WHERE ... AND/OR ...`, `NOT (...)`
-- **exact_match** → `prop_<name> = %s`
-- **fuzzy_match** → trigram similarity or `ILIKE` with pg_trgm
-- **phonetic_match** → requires a phonetic extension
-  (e.g., `fuzzystrmatch`)
-- **numeric comparisons** → `prop_<name>_numeric > %s`
-- **date comparisons** → `prop_<name>_date > %s`
-- **date_range** → `prop_<name>_date BETWEEN %s AND %s`
-- **is_empty** → `prop_<name> IS NULL OR prop_<name> = ''`
-- **starts_with** → `prop_<name> LIKE %s || '%%'`
+- **AND/OR/NOT** → `and_()`, `or_()`, `not_()`
+- **exact_match** → `table.c.prop_name == value`
+- **not_equals** → `table.c.prop_name != value`
+- **starts_with** → `table.c.prop_name.startswith(value)`
+- **fuzzy_match** → `func.similarity(table.c.prop_name, value) > threshold`
+  (with pg_trgm)
+- **phonetic_match** → `func.soundex(table.c.prop_name) == func.soundex(value)`
+  (with fuzzystrmatch)
+- **numeric comparisons** → `table.c.prop_name_numeric > value`
+- **date comparisons** → `table.c.prop_name_date > value`
+- **date_range** → `table.c.prop_name_date.between(start, end)`
+- **is_empty** → `or_(table.c.prop_name == None, table.c.prop_name == '')`
 
-Cross-relationship queries become JOINs:
+Cross-relationship queries become SQLAlchemy JOINs:
 
-```sql
-SELECT p.case_id, p.case_name
-FROM projectdb_myproject_patient p
-JOIN projectdb_myproject_household h ON p.idx_parent = h.case_id
-WHERE h.prop_district = 'Kamuli'
-  AND p.prop_dob_date > '2020-01-01'
+```python
+patient = tables['patient']
+household = tables['household']
+
+query = (
+    select(patient.c.case_id, patient.c.case_name)
+    .join(household, patient.c.idx_parent == household.c.case_id)
+    .where(and_(
+        household.c.prop_district == 'Kamuli',
+        patient.c.prop_dob_date > date(2020, 1, 1),
+    ))
+)
 ```
 
 This replaces the current multi-round-trip approach and eliminates the
@@ -211,9 +285,9 @@ This replaces the current multi-round-trip approach and eliminates the
 
 ### For Other Consumers
 
-- **Exports**: `SELECT *` with optional JOINs for denormalized output
+- **Exports**: `select()` with optional `.join()` for denormalized output
 - **Reporting**: direct SQL queries or as a UCR-like datasource
-- **APIs**: filtered queries with pagination
+- **APIs**: filtered queries with `.limit()` / `.offset()`
 - **CLE**: same query interface as case search
 
 ## Indexing
@@ -231,6 +305,9 @@ For text search operations (fuzzy match, starts_with), consider:
 
 - GIN index with `pg_trgm` for trigram similarity
 - GiST index for phonetic matching
+
+These are defined as SQLAlchemy `Index` objects on the `Table` and
+created alongside the table via `metadata.create_all()`.
 
 ## Open Questions
 
@@ -267,3 +344,5 @@ For text search operations (fuzzy match, starts_with), consider:
 - Data-first app development features
 - Synchronous write path
 - SQL sandboxing for direct user queries
+- Filter spec → SQLAlchemy query translation (deferred until the data
+  model and query performance are validated)
