@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurable Case Search Endpoints — Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --surface-dim: #f3f1ee;
+  --surface-elevated: #ffffff;
+  --border: rgba(0, 0, 0, 0.07);
+  --border-bright: rgba(0, 0, 0, 0.14);
+  --text: #1e1b18;
+  --text-dim: #7c7570;
+  --text-on-accent: #ffffff;
+
+  --blue: #1e3a5f;
+  --blue-dim: rgba(30, 58, 95, 0.06);
+  --gold: #a16207;
+  --gold-dim: rgba(161, 98, 7, 0.07);
+  --teal: #0f766e;
+  --teal-dim: rgba(15, 118, 110, 0.06);
+  --rose: #9f1239;
+  --rose-dim: rgba(159, 18, 57, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141210;
+    --surface: #1e1b18;
+    --surface-dim: #171513;
+    --surface-elevated: #28241f;
+    --border: rgba(255, 255, 255, 0.06);
+    --border-bright: rgba(255, 255, 255, 0.12);
+    --text: #ede8e2;
+    --text-dim: #9e958c;
+    --text-on-accent: #ffffff;
+
+    --blue: #7da4d4;
+    --blue-dim: rgba(125, 164, 212, 0.1);
+    --gold: #f5c842;
+    --gold-dim: rgba(245, 200, 66, 0.1);
+    --teal: #5eead4;
+    --teal-dim: rgba(94, 234, 212, 0.08);
+    --rose: #fda4af;
+    --rose-dim: rgba(253, 164, 175, 0.08);
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--bg);
+  background-image: radial-gradient(ellipse 70% 40% at 50% 0%, var(--blue-dim), transparent);
+  line-height: 1.6;
+  padding: 48px 24px 64px;
+}
+
+.container {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+header {
+  margin-bottom: 48px;
+}
+
+header h1 {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+header .lead {
+  font-size: 1.05rem;
+  color: var(--text-dim);
+  max-width: 640px;
+  line-height: 1.7;
+}
+
+/* ── Section labels ── */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  margin-top: 48px;
+}
+
+.section-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.section-label h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin-bottom: 12px;
+}
+
+.card--elevated {
+  background: var(--surface-elevated);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.card p {
+  font-size: 0.92rem;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+
+.card p + p { margin-top: 10px; }
+
+.card strong { color: var(--text); font-weight: 600; }
+
+/* ── Callout ── */
+.callout {
+  background: var(--gold-dim);
+  border-left: 3px solid var(--gold);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 20px;
+  margin: 16px 0;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.callout strong { color: var(--text); }
+
+/* ── Inline badge ── */
+.badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  vertical-align: 1px;
+}
+
+.badge--blue { background: var(--blue-dim); color: var(--blue); }
+.badge--teal { background: var(--teal-dim); color: var(--teal); }
+.badge--gold { background: var(--gold-dim); color: var(--gold); }
+.badge--rose { background: var(--rose-dim); color: var(--rose); }
+
+/* ── Table example ── */
+.schema-example {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 16px 0;
+  font-size: 0.82rem;
+}
+
+.schema-example-header {
+  background: var(--surface-dim);
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.schema-example table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.schema-example th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.schema-example td {
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.schema-example tr:last-child td { border-bottom: none; }
+
+.col-name { font-weight: 500; color: var(--text); }
+.col-type { color: var(--text-dim); }
+.col-note { font-family: var(--font-body); color: var(--text-dim); font-size: 0.78rem; }
+
+/* ── Flow arrow between sections ── */
+.flow-arrow {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  color: var(--border-bright);
+}
+
+/* ── Mermaid ── */
+.mermaid-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  margin: 16px 0;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+
+.mermaid .nodeLabel { color: var(--text) !important; }
+.mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--surface) !important; }
+.mermaid .edgeLabel rect { fill: var(--surface) !important; }
+.mermaid .nodeLabel { font-family: var(--font-body) !important; font-size: 14px !important; }
+.mermaid .edgeLabel { font-family: var(--font-body) !important; font-size: 12px !important; }
+
+/* ── Parameter list ── */
+.param-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+@media (max-width: 600px) { .param-list { grid-template-columns: 1fr; } }
+
+.param-item {
+  background: var(--surface-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.param-item .param-name {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.param-item .param-desc {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+/* ── Value source cards ── */
+.value-sources {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+@media (max-width: 600px) { .value-sources { grid-template-columns: 1fr; } }
+
+.vs-card {
+  background: var(--surface-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+}
+
+.vs-card .vs-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.vs-card .vs-desc {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.vs-card .vs-example {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card, .mermaid-wrap, .schema-example, .callout {
+  animation: fadeUp 0.35s ease-out both;
+  animation-delay: calc(var(--d, 0) * 0.06s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  header h1 { font-size: 1.8rem; }
+  .card { padding: 18px 20px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Configurable Case Search Endpoints</h1>
+    <p class="lead">
+      A new system for defining case search endpoints with structured,
+      visual filter logic — backed by auto-generated project database
+      tables that enable efficient relational queries.
+    </p>
+  </header>
+
+  <!-- ═══════ 1. PROJECT DATABASE TABLES ═══════ -->
+  <div class="section-label">
+    <div class="section-num" style="background:var(--blue-dim); color:var(--blue);">1</div>
+    <h2>Project Database Tables</h2>
+  </div>
+
+  <div class="card card--elevated" style="--d:1;">
+    <p>
+      For each case type in a project, the system <strong>automatically generates
+      a database table</strong> based on the project's data dictionary.
+      No manual configuration is needed.
+    </p>
+    <p>
+      Each case property becomes a column with its <strong>declared data type</strong>
+      (text, number, date, etc.). Case relationships — parent/child,
+      host/extension — become <strong>foreign key links</strong> between tables,
+      enabling direct JOINs instead of the current multi-step lookups.
+    </p>
+  </div>
+
+  <div class="schema-example" style="--d:2;">
+    <div class="schema-example-header">Example: patient table</div>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td class="col-name">case_id</td><td class="col-type">text</td><td class="col-note">Primary key</td></tr>
+        <tr><td class="col-name">case_name</td><td class="col-type">text</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">owner_id</td><td class="col-type">text</td><td class="col-note">User, group, or location</td></tr>
+        <tr><td class="col-name">first_name</td><td class="col-type">text</td><td class="col-note">From data dictionary</td></tr>
+        <tr><td class="col-name">dob</td><td class="col-type">date</td><td class="col-note">Typed per data dictionary</td></tr>
+        <tr><td class="col-name">age</td><td class="col-type">number</td><td class="col-note">Typed per data dictionary</td></tr>
+        <tr><td class="col-name">risk_level</td><td class="col-type">text</td><td class="col-note"></td></tr>
+        <tr><td class="col-name">parent &rarr; household</td><td class="col-type">foreign key</td><td class="col-note">Links to household table</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout" style="--d:3;">
+    <strong>Why not Elasticsearch?</strong> &nbsp;ES stores all properties in a flat,
+    untyped structure and can't do JOINs. Querying across case
+    relationships currently requires multiple round trips with a hard limit of
+    500k parent cases. Project database tables eliminate both constraints.
+  </div>
+
+  <!-- Arrow -->
+  <div class="flow-arrow">
+    <svg width="24" height="32" viewBox="0 0 24 32"><path d="M12 2v24M6 20l6 8 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- ═══════ 2. POPULATING TABLES ═══════ -->
+  <div class="section-label">
+    <div class="section-num" style="background:var(--teal-dim); color:var(--teal);">2</div>
+    <h2>Populating Tables</h2>
+  </div>
+
+  <div class="card" style="--d:4;">
+    <p>
+      Tables are kept up to date via CommCare's existing
+      <strong>change feed</strong> — the same mechanism that currently
+      feeds Elasticsearch and UCR.
+    </p>
+    <p>
+      When a case is created or updated, a single row is inserted or updated in
+      the appropriate table. Values are <strong>automatically cast</strong> to their
+      declared types (a date string becomes a real date column, a number string
+      becomes a numeric column). If a value can't be cast, the raw text is
+      still stored.
+    </p>
+    <p>
+      Because the data is <strong>normalized</strong> (each case type in its own table),
+      there are no related-case lookups at write time. Updating a parent case
+      only touches the parent's row — child rows don't need updating.
+      This makes writes significantly cheaper than the current ES or UCR approach.
+    </p>
+  </div>
+
+  <!-- Arrow -->
+  <div class="flow-arrow">
+    <svg width="24" height="32" viewBox="0 0 24 32"><path d="M12 2v24M6 20l6 8 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- ═══════ 3. CONFIGURING AN ENDPOINT ═══════ -->
+  <div class="section-label">
+    <div class="section-num" style="background:var(--gold-dim); color:var(--gold);">3</div>
+    <h2>Configuring an Endpoint</h2>
+  </div>
+
+  <div class="card card--elevated" style="--d:5;">
+    <p>
+      An admin configures a case search endpoint by specifying a
+      <strong>case type</strong>, defining <strong>input parameters</strong>,
+      and building <strong>filter logic</strong> using a visual query builder.
+    </p>
+  </div>
+
+  <div class="card" style="--d:6;">
+    <p><strong>Input parameters</strong> are named, typed values that the
+    endpoint expects to receive at request time. For example:</p>
+
+    <div class="param-list">
+      <div class="param-item">
+        <div class="param-name">search_province <span class="badge badge--teal">text</span></div>
+        <div class="param-desc">Province to filter on</div>
+      </div>
+      <div class="param-item">
+        <div class="param-name">min_age <span class="badge badge--blue">number</span></div>
+        <div class="param-desc">Minimum patient age</div>
+      </div>
+      <div class="param-item">
+        <div class="param-name">cutoff_date <span class="badge badge--rose">date</span></div>
+        <div class="param-desc">Only cases after this date</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="--d:7;">
+    <p>
+      <strong>Filter logic</strong> is composed visually using the query builder.
+      The admin selects case properties, chooses operations
+      (equals, greater than, starts with, etc.), and specifies values.
+      Conditions can be grouped with <strong>AND</strong>, <strong>OR</strong>,
+      and <strong>NOT</strong> at any nesting depth.
+    </p>
+    <p>
+      Each value in a filter condition comes from one of three sources:
+    </p>
+
+    <div class="value-sources">
+      <div class="vs-card">
+        <div class="vs-label">Constant</div>
+        <div class="vs-desc">A fixed value set by the admin</div>
+        <div class="vs-example" style="background:var(--blue-dim); color:var(--blue);">"active"</div>
+      </div>
+      <div class="vs-card">
+        <div class="vs-label">Parameter</div>
+        <div class="vs-desc">Filled in at request time</div>
+        <div class="vs-example" style="background:var(--gold-dim); color:var(--gold);">search_province</div>
+      </div>
+      <div class="vs-card">
+        <div class="vs-label">Auto-value</div>
+        <div class="vs-desc">Resolved automatically</div>
+        <div class="vs-example" style="background:var(--teal-dim); color:var(--teal);">today()</div>
+      </div>
+    </div>
+
+    <p style="margin-top: 12px;">
+      Auto-values include <span class="badge badge--teal">today()</span>
+      <span class="badge badge--teal">now()</span>
+      <span class="badge badge--teal">user.username</span>
+      <span class="badge badge--teal">user.location_ids</span> and other
+      context about the requesting user — available without the admin
+      defining them.
+    </p>
+  </div>
+
+  <div class="card" style="--d:8;">
+    <p>
+      <strong>Available operations depend on the data type.</strong>
+      The backend declares which filter operations it supports for each type.
+      The UI only shows valid combinations — for example,
+      "starts with" appears for text fields but not date fields,
+      while "before / after" appears for dates but not text.
+    </p>
+    <p>
+      The filter configuration is saved as a structured specification.
+      It is <strong>backend-agnostic</strong> — the same
+      specification can be executed against Elasticsearch or SQL.
+    </p>
+  </div>
+
+  <!-- Arrow -->
+  <div class="flow-arrow">
+    <svg width="24" height="32" viewBox="0 0 24 32"><path d="M12 2v24M6 20l6 8 6-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <!-- ═══════ 4. REQUEST-TIME FLOW ═══════ -->
+  <div class="section-label">
+    <div class="section-num" style="background:var(--rose-dim); color:var(--rose);">4</div>
+    <h2>At Request Time</h2>
+  </div>
+
+  <div class="card" style="--d:9;">
+    <p>
+      When a mobile application or integration sends a request to the endpoint,
+      the system loads the stored filter specification, <strong>binds the
+      parameter values</strong> from the request, <strong>resolves auto-values</strong>
+      (current date, user info), and hands the complete filter tree to the
+      backend for execution.
+    </p>
+    <p>
+      With the project database backend, cross-relationship filters become
+      direct <strong>JOIN queries</strong> — for example, "find all patient cases
+      where their household's district is Kamuli" is a single efficient query
+      instead of multiple round trips.
+    </p>
+  </div>
+
+  <div class="mermaid-wrap" style="--d:10;">
+    <pre class="mermaid">
+flowchart TD
+    REQ["App sends request<br/><small>with parameter values</small>"]
+    LOAD["Load stored filter spec"]
+    BIND["Bind parameters +<br/>resolve auto-values"]
+    XLAT["Translate to query"]
+    DB[("Project Database<br/><small>SQL tables</small>")]
+    RES["Return matching cases"]
+
+    REQ --> LOAD --> BIND --> XLAT --> DB --> RES
+    </pre>
+  </div>
+
+  <div class="callout" style="--d:11;">
+    <strong>Backend flexibility.</strong> Because the filter specification is
+    backend-agnostic, the same endpoint configuration can be executed against
+    Elasticsearch (today) or the new project database tables (coming soon) —
+    with no changes to the endpoint definition.
+  </div>
+
+</div>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    look: 'classic',
+    flowchart: { curve: 'monotoneY' },
+    themeVariables: {
+      primaryColor: isDark ? '#28241f' : '#f3f1ee',
+      primaryBorderColor: isDark ? '#7da4d4' : '#1e3a5f',
+      primaryTextColor: isDark ? '#ede8e2' : '#1e1b18',
+      secondaryColor: isDark ? '#1e1b18' : '#faf9f7',
+      secondaryBorderColor: isDark ? '#5eead4' : '#0f766e',
+      secondaryTextColor: isDark ? '#ede8e2' : '#1e1b18',
+      lineColor: isDark ? '#4a443e' : '#c4beb6',
+      fontSize: '15px',
+      fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+    }
+  });
+</script>
+</body>
+</html>
