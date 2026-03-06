@@ -50,6 +50,10 @@ Be explicit when reasoning from established facts vs. speculating. Mark speculat
 
 Changes are tracked in git. Commit frequently — this is the safety net for document changes.
 
+## Implementation Repository
+
+The codebase where this feature will be implemented is at `../../commcare-hq` (relative to this directory).
+
 ## Domain Vocabulary
 
 These terms are established — use them as-is:
