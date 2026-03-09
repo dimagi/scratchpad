@@ -76,3 +76,17 @@ Implemented the full project DB PoC on branch `es/project-db` in commcare-hq. Us
 - Keys use three namespaces: bare names for fixed fields (`case_id`), `prop.<name>` for dynamic properties, `indices` for relationships
 - Maps to column names: `prop.first_name` → `prop_first_name` column
 - Eliminates ambiguity between fixed fields and dynamic properties from `case_json`
+
+## 2026-03-09 18:10 UTC — Claude - Martin's session (UTC-6)
+
+Created `query_builder_tech_spec.md` — implementation spec for the case search endpoints feature. Key decisions made:
+
+- **App location**: `corehq/apps/case_search/` (no new Django app)
+- **Feature flag**: `CASE_SEARCH_ENDPOINTS` domain toggle
+- **Data model**: `CaseSearchEndpoint` (id, domain, name, target_type, target_name, current_version, created_at, is_active) + `CaseSearchEndpointVersion` (id, endpoint, version_number, parameters, query, created_at). Split `target_type`/`target_name` from the start to avoid future migration.
+- **Versioning**: Immutable versions, `current_version` pointer on endpoint, version rows never deleted. Apps can pin to a specific version number.
+- **Deletion**: Soft delete (`is_active = False`) only.
+- **Service layer**: `endpoint_service.py` contains all business logic. Views and future `api.py` (MCP) are thin wrappers calling the same functions.
+- **Capability JSON**: Single endpoint `GET /capability/` returns all case types + fields + operations + auto_values grouped by field type. Source is data dictionary initially. `auto_values` keyed by field type so UI only shows relevant options per slot.
+- **Query builder**: Standalone `partials/query_builder.html`, HTMX + Alpine.js + Bootstrap 5. Receives capability JSON as template variable, has no knowledge of search endpoints context.
+- **Target**: Initially `project_db` only. `target_type`/`target_name` fields allow adding ES and view targets without migration.
