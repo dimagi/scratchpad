@@ -27,3 +27,22 @@ Created `infrastructure_design.md` covering infrastructure requirements for the 
 - **Partitioning**: No PG table partitioning needed initially — tables are naturally scoped by domain+case_type. PL/Proxy sharding does not apply. FK constraints should not be enforced (async write order not guaranteed).
 - **Conflict flagged**: `pg_trgm` and `fuzzystrmatch` are **not installed** on any CommCare HQ database in production. The query builder design's `fuzzy_match` and `phonetic_match` SQL components depend on these extensions. They would need to be explicitly added to commcare-cloud provisioning, or be designated ES-only components until that happens.
 - **Open question added**: UCR DB headroom — project DB defaults to sharing `rds_pgucr0`; sizing should be assessed before launch.
+
+## 2026-03-09 — Claude - Ethan's session (UTC-5)
+
+Reviewed Martin's additions (`CLAUDE.md`, `infrastructure_design.md`, `log.md`). Key observations:
+
+- **Infrastructure doc resolves several open questions** from `project_db_design.md`: database placement (Q1), multi-tenancy model (Q2), phonetic/fuzzy search availability (Q4), geo queries (Q5). These should be reconciled — the open questions in `project_db_design.md` can be marked as resolved with cross-references to `infrastructure_design.md`.
+
+- **Remaining open questions** in `project_db_design.md` that are NOT yet addressed by the infrastructure doc: data dictionary completeness (Q3), backfill performance (Q6), relationship ambiguity (Q7).
+
+- **No conflicts detected** between the infrastructure doc and the existing design docs. The decisions are consistent with what was discussed in Ethan's earlier session (SQLAlchemy Core, `ConnectionManager`, FK constraints not enforced, append-only schema evolution).
+
+Prior session activity (Ethan, 2026-03-05 through 2026-03-07):
+
+- Created `query_builder_design.md` — full technical design for the configurable query builder (backend capability declaration, component catalog, filter spec JSON format, auto-defined values, UI rendering logic)
+- Created `project_db_design.md` — technical design for auto-generated PostgreSQL tables (SQLAlchemy Core, table-per-case-type, typed columns, FK relationships, upsert-based population, cross-relationship JOINs)
+- Created `case-search-endpoints-overview.html` — PM-facing visual summary
+- Created `query-builder-mockup.html` — UI mockup in CommCare form-builder style
+- **Key decisions made**: SQLAlchemy Core (not Django ORM, not raw SQL) for schema/DDL/queries; backend defines operations + field type compatibility (not field-specific); ancestor/subcase queries out of scope for initial design; development to be entirely test-driven
+- **PoC priorities established**: Schema generation → Data population → Cross-relationship queries (JOINs) → Performance at scale → Query translation (deferred)
