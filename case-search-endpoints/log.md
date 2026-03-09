@@ -90,3 +90,20 @@ Created `query_builder_tech_spec.md` — implementation spec for the case search
 - **Capability JSON**: Single endpoint `GET /capability/` returns all case types + fields + operations + auto_values grouped by field type. Source is data dictionary initially. `auto_values` keyed by field type so UI only shows relevant options per slot.
 - **Query builder**: Standalone `partials/query_builder.html`, HTMX + Alpine.js + Bootstrap 5. Receives capability JSON as template variable, has no knowledge of search endpoints context.
 - **Target**: Initially `project_db` only. `target_type`/`target_name` fields allow adding ES and view targets without migration.
+
+## 2026-03-09 18:25 UTC — Claude - Martin's session (UTC-6)
+
+Created `query-builder-implementation-plan.md` — 8-task TDD implementation plan for the query builder and case search endpoints feature. Key decisions resolved with Martin before writing:
+
+- **PASSWORD fields**: Excluded from capability builder (not queryable)
+- **Select field options source**: Data dictionary `CasePropertyAllowedValue` records (option a)
+- **Service file naming**: `endpoint_service.py` (resolves inconsistency in tech spec between file tree and prose)
+- **View base class**: `BaseProjectDataView` (matches `CSQLFixtureExpressionView` pattern)
+
+**Task sequence**: Feature flag → Data models → Service layer → Capability builder → Views + URLs → List template → Edit template → Query builder Alpine.js partial
+
+**Deferred items flagged in plan**:
+- Multi-slot components (`date_range` start/end, `within_distance` point/distance/unit) — partial only handles single-input components currently
+- `geopoint`/`within_distance` unusable until PostGIS extensions provisioned (per `infrastructure_design.md`)
+- Hard delete (currently deactivate-only)
+- `api.py` for MCP access
