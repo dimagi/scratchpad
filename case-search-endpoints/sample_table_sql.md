@@ -30,7 +30,75 @@ FROM case_client c
 LEFT JOIN case_alias a ON c.case_id = a.parent_case_id
 ORDER BY c.case_id ASC
 ```
+### Filtering Logic
+Here is the detailed breakdown of the filtering logic for **Search and Admit Client** from the **Central Registry** app.
 
+Because this module queries a statewide/centralized patient registry, its `_xpath_query` is uniquely complex. It is designed to find patients not just by their primary demographics, but also by any alternate identities (aliases) they might have used in the past. It achieves this by checking the root `client` case and dynamically traversing down into child `alias` cases using CommCare's `subcase-exists()` function.
+
+#### 1. Base Filtering (Always Applied)
+
+These filters evaluate properties living directly on the root `client` record to ensure only valid registry patients are returned.
+
+* **Registry Validation:**
+    * **Function:** Simple equality check.
+    * **Logic:** `central_registry = 'yes'`
+    * **Description:** Ensures the client is actually enrolled in the centralized database, keeping local/draft cases out of the statewide search.
+
+
+* **Active Status:**
+    * **Function:** Simple inequality check.
+    * **Logic:** `current_status != 'pending'`
+    * **Description:** Excludes client profiles that are still in a "pending" state (e.g., they were started but never finished or are awaiting deduplication/approval).
+
+
+
+#### 2. Dynamic User Filters & Alias Traversal
+
+When a user types into the search fields, the query builds a specialized `OR` statement for almost every demographic. It checks if the value matches the primary `client` record **OR** if it matches any child `alias` record tied to that client.
+
+* **First Name & Last Name (User Input):**
+    * **Function:** Equality check combined with `subcase-exists()`.
+    * **Logic:** `first_name = "[input]" or subcase-exists('alias', first_name = "[input]")` (Same logic applies to `last_name`).
+    * **Description:** If the user searches for "John", the system checks if the primary client's first name is John. If it isn't, it dives into the client's subcases to see if they have an `alias` case where the first name is John (e.g., catching maiden names, legal name changes, or preferred names).
+
+
+* **Date of Birth (User Input & Fuzzy Matching):**
+    * **Function:** Equality check, `subcase-exists()`, and mathematical date checks.
+    * **Logic:** If exact match: `dob = "[input]" or subcase-exists('alias', dob = "[input]")`. If the user enables the `fuzzy_match_dob` toggle, it expands to check if the DOB is within +/- 1 year (or similar configured range) of the inputted date on both the client and alias records.
+    * **Description:** Searches the primary DOB and any alias DOBs. The fuzzy match allows for common data entry errors in birthdays (like swapping the month and day, or being off by one year).
+
+
+* **Social Security Number & Medicaid ID (User Inputs):**
+    * **Function:** Simple equality check combined with `subcase-exists()`.
+    * **Logic:** `social_security_number = "[input]" or subcase-exists('alias', social_security_number = "[input]")` (Same for `medicaid_id`).
+    * **Description:** Cross-references the inputted SSN or Medicaid ID against both the primary record and any historical/alias identifiers attached to the client.
+
+
+* **Middle Name (User Input):**
+    * **Function:** Simple equality check.
+    * **Logic:** `middle_name = "[input]"`
+    * **Description:** Checks the primary client record for a matching middle name. (Note: Unlike first/last name, middle names are often not rigorously tracked in alias subcases depending on your exact configuration).
+
+
+* **Case ID (User Input):**
+    * **Function:** Equality check on metadata properties.
+    * **Logic:** `@case_id = "[input]" or subcase-exists('alias', @case_id = "[input]")`
+    * **Description:** Allows a user to directly pull up a client if they know the exact system ID, checking both the parent client ID and any associated alias IDs.
+
+
+
+#### 3. Special Validation Filters
+
+* **Consent Collected (User Input):**
+    * **Function:** Simple equality check.
+    * **Logic:** `consent_collected = "[input]"`
+    * **Description:** Evaluates the `consent_collected` flag. In highly secure central registries, searching for certain clients may be restricted unless the user explicitly checks a box confirming they have collected ROI (Release of Information) or consent from the patient standing in front of them.
+
+
+* **Reason for No SSN (User Input):**
+    * **Function:** Simple equality check.
+    * **Logic:** `reason_for_no_ssn = "[input]"`
+    * **Description:** If a user searches for a client without an SSN, they can filter by the documented reason (e.g., undocumented, refused to provide), ensuring they find the exact matching profile.
 ---
 
 ## Search My Clients
