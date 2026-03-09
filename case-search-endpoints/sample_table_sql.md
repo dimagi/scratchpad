@@ -132,7 +132,70 @@ LEFT JOIN case_alias a ON c.case_id = a.client_case_id
 -- Forces the query to ONLY return rows if a service record exists
 INNER JOIN case_service s ON c.case_id = s.parent_case_id
 ```
+### Filter Logic
+Here is the detailed breakdown of the filtering logic for **Module 12 (Search My Clients)** from your **Central Registry** app.
 
+While Module 10 searches the *entire* statewide registry, Module 12 is specifically designed so users can search within their own clinic's patient roster. To accomplish this, the `_xpath_query` not only checks the root `client` case and its `alias` subcases (for name changes), but it also traverses into **`service`** subcases (which represent admission/treatment episodes) to ensure the client is actually tied to the user's facility.
+
+#### 1. Base Filtering (Always Applied)
+
+These filters automatically restrict the universe of clients to only those relevant to the logged-in user.
+
+* **Facility Ownership (The "My" in My Clients):**
+    * **Function:** `subcase-exists()`
+    * **Logic:** `subcase-exists('service', clinic_case_id = "[user's_clinic_id]")`
+    * **Description:** This is the core security filter. It tells the system to look at the client's subcases and verify that they have at least one `service` (admission) record where the `clinic_case_id` exactly matches the facility the user is currently logged into. If they have never been admitted to the user's clinic, they will not appear in this list.
+
+
+* **Registry Validation:**
+    * **Function:** Simple equality check.
+    * **Logic:** `central_registry = 'yes'`
+    * **Description:** Ensures the root client record is officially part of the central registry.
+
+
+
+#### 2. Dynamic User Filters: Service Traversal (Admissions)
+
+Because the user is searching *their* specific admissions, certain search fields evaluate the properties living on the child `service` case rather than the client themselves.
+
+* **Current Status (User Input):**
+    * **Function:** Equality check nested inside `subcase-exists()`.
+    * **Logic:** `subcase-exists('service', current_status = "[input]" and clinic_case_id = "[user's_clinic_id]")`
+    * **Description:** Allows the user to filter their roster by admission status (e.g., active, discharged). It specifically ensures that the status being checked belongs to the episode of care at *their* clinic, not a concurrent admission at a different clinic.
+
+
+* **Admission Date & Discharge Date (User Inputs):**
+    * **Function:** Mathematical date checks (`>=`, `<=`) nested inside `subcase-exists()`.
+    * **Logic:** `subcase-exists('service', admission_date >= "[start_date]" and admission_date <= "[end_date]")`
+    * **Description:** The user can filter their patient list by when they were admitted or discharged. The system checks the dates on the child `service` case corresponding to the user's clinic.
+
+
+
+#### 3. Dynamic User Filters: Alias Traversal (Demographics)
+
+Just like in the statewide search, users need to be able to find their own patients even if the patient's name or ID has changed over time. The query checks the root `client` record **OR** any child `alias` record.
+
+* **First Name & Last Name (User Input):**
+    * **Function:** Equality check combined with `subcase-exists()`.
+    * **Logic:** `first_name = "[input]" or subcase-exists('alias', first_name = "[input]")`
+    * **Description:** Searches the primary client name and any historically documented names (aliases) attached to the client.
+
+
+* **Date of Birth (User Input & Fuzzy Matching):**
+    * **Function:** Equality check, `subcase-exists()`, and mathematical/fuzzy date matching.
+    * **Logic:** Checks `dob = "[input]" or subcase-exists('alias', dob = "[input]")`. If `fuzzy_match_dob` is enabled, it mathematically expands the search to catch dates within a configured error margin (like +/- 1 year) across both the root client and alias records.
+
+
+* **Social Security Number & Medicaid ID (User Inputs):**
+    * **Function:** Simple equality check combined with `subcase-exists()`.
+    * **Logic:** `social_security_number = "[input]" or subcase-exists('alias', social_security_number = "[input]")` (Same logic for `medicaid_id`).
+    * **Description:** Allows the facility worker to type in an SSN or Medicaid ID and find the patient, even if the ID was recently updated or previously recorded differently in an alias case.
+
+
+* **Case ID (User Input):**
+    * **Function:** Equality check on metadata properties.
+    * **Logic:** `@case_id = "[input]" or subcase-exists('alias', @case_id = "[input]")`
+    * **Description:** A direct lookup using the system's exact case ID, checking the root client and any of their alias records.
 ---
 
 ## Search Beds
