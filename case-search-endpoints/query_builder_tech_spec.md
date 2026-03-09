@@ -118,6 +118,74 @@ This separation allows an `api.py` (for MCP or programmatic access) to
 call the same functions and return JSON responses without any logic
 duplication.
 
+### Filter Spec Validation
+
+`create_endpoint` and `save_new_version` validate the filter spec before
+persisting. Validation is a separate function so it can be tested and
+reused independently.
+
+```python
+def validate_filter_spec(query, capability)
+    -> list[str]   # empty = valid; non-empty = list of error messages
+```
+
+Validation rules:
+
+1. **Structure**: Root must be a boolean node (`and`, `or`) or a single
+   `component` node. Boolean nodes must have a `children` list (or `child`
+   for `not`). Component nodes must have `component`, `field`, and `inputs`.
+2. **Field existence**: `field` must reference a field in the capability's
+   case type.
+3. **Component/field compatibility**: `component` must be in the field's
+   `operations` list.
+4. **Input completeness**: All required input slots for the component must
+   be present. The required slots are derived from the component catalog
+   (see below).
+5. **Input type validity**: Each input slot value must have a valid `type`
+   (`constant`, `parameter`, `auto_value`). Parameter refs must reference
+   a declared parameter. Auto value refs must exist in `auto_values`.
+6. **Version number conflicts**: On save, if `MAX(version_number) + 1`
+   collides (concurrent save), catch `IntegrityError` and return a user-
+   facing error: "Another version was saved. Please reload and try again."
+
+Views return validation errors as JSON `{"errors": [...]}` with HTTP 400.
+
+### Component Input Schema
+
+Components declare their required input slots. This is used by both the
+UI (to render the right number of inputs) and validation (to check
+completeness).
+
+```python
+COMPONENT_INPUT_SCHEMAS = {
+    'exact_match':    [{'name': 'value', 'type': 'text'}],
+    'not_equals':     [{'name': 'value', 'type': 'text'}],
+    'starts_with':    [{'name': 'value', 'type': 'text'}],
+    'fuzzy_match':    [{'name': 'value', 'type': 'text'}],
+    'phonetic_match': [{'name': 'value', 'type': 'text'}],
+    'selected_any':   [{'name': 'value', 'type': 'text'}],
+    'selected_all':   [{'name': 'value', 'type': 'text'}],
+    'is_empty':       [],
+    'equals':         [{'name': 'value', 'type': 'match_field'}],
+    'gt':             [{'name': 'value', 'type': 'number'}],
+    'gte':            [{'name': 'value', 'type': 'number'}],
+    'lt':             [{'name': 'value', 'type': 'number'}],
+    'lte':            [{'name': 'value', 'type': 'number'}],
+    'before':         [{'name': 'value', 'type': 'match_field'}],
+    'after':          [{'name': 'value', 'type': 'match_field'}],
+    'date_range':     [{'name': 'start', 'type': 'match_field'},
+                       {'name': 'end', 'type': 'match_field'}],
+    'fuzzy_date':     [{'name': 'value', 'type': 'date'}],
+    'within_distance':[{'name': 'point', 'type': 'geopoint'},
+                       {'name': 'distance', 'type': 'number'},
+                       {'name': 'unit', 'type': 'choice'}],
+}
+```
+
+`match_field` means the slot type matches the field's type (e.g., `date`
+field → `date` slot, `number` field → `number` slot). This allows the UI
+to offer the right auto values and parameter type filtering.
+
 ---
 
 ## Field Capability JSON
@@ -252,14 +320,33 @@ Bootstrap 5 for styling.
 └───────────────────────────────────────────┘
 ```
 
-**Value slot:** For each leaf node input, the admin selects a value source:
+**Value slots:** Each leaf node renders input fields for every slot in the
+component's `COMPONENT_INPUT_SCHEMAS` entry. Components with multiple
+slots (e.g., `date_range` → `start` + `end`) render multiple input rows.
+
+For each input slot, the admin selects a value source:
 - **Literal** — inline input appropriate to the slot type
 - **Parameter** — dropdown of admin-defined parameters matching the slot type
 - **Auto value** — dropdown of `auto_values[field.type]` entries
 
+**Data injection:** Capability JSON and existing query spec are injected
+into the template using Django's `json_script` template tag (not
+`{{ var|safe }}`) to prevent XSS from user-controlled field names:
+
+```html
+{{ capability|json_script:"capability-data" }}
+{{ current_query|json_script:"query-data" }}
+
+<script>
+  const capability = JSON.parse(
+    document.getElementById('capability-data').textContent
+  );
+</script>
+```
+
 **Save:** HTMX POST serializes the Alpine state (parameters + filter tree)
 as the JSON filter spec. Server validates and saves, returns the updated
-list or inline validation errors.
+list or inline validation errors (HTTP 400 with `{"errors": [...]}`).
 
 ---
 
@@ -277,14 +364,11 @@ list or inline validation errors.
 
 ## Open Questions
 
-1. **`PASSWORD` fields in query builder**: Should they be excluded from
-   the field list entirely? They are a text type but searching by password
-   is almost certainly unintended.
+1. ~~**`PASSWORD` fields in query builder**~~: **Resolved** — excluded
+   from capability builder. Not queryable.
 
-2. **`select` field options source**: Where do the possible values for a
-   `SELECT` field come from? Options: (a) data dictionary allowed values
-   if defined, (b) distinct values from case data, (c) free text. Needs
-   a decision before implementing `capability.py`.
+2. ~~**`select` field options source**~~: **Resolved** — data dictionary
+   `CasePropertyAllowedValue` records (option a).
 
 3. **Delete vs. deactivate**: The list view shows a deactivate action.
    Should there also be a hard delete for endpoints that have never been
