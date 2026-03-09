@@ -105,7 +105,105 @@ FROM case_capacity cap
 LEFT JOIN case_unit un ON contains(cap.unit_case_ids, un.case_id)
 LEFT JOIN case_clinic c ON cap.parent_case_id = c.case_id
 ```
+### Filtering Logic
+Here is a detailed breakdown of exactly how each filter is executed under the hood for **Search Beds**.
 
+Because Search Beds searches for `capacity` (bed) cases but users are conceptually searching for "facilities," the filtering is split between checks done directly on the `capacity` case and checks done on the parent `clinic` case using a special related-case function.
+
+#### 1. Direct Checks on the `capacity` Case
+
+These filters evaluate the properties living directly on the bed capacity record.
+
+* **Active Capacity Record:**
+    * **Function:** Simple inequality check.
+    * **Logic:** `current_status != 'closed'`
+    * **Description:** Ensures the system only returns capacity records that haven't been archived or closed.
+
+
+* **Only Open Beds (User Input):**
+    * **Function:** Simple greater-than mathematical check.
+    * **Logic:** `open_beds > 0`
+    * **Description:** If the user checks the "Only Open Beds" box, the query filters out any capacity case where the `open_beds` integer is 0 or empty.
+
+
+* **Age (User Input):**
+    *  **Function:** `selected()` (CommCare's function for checking if a value exists within a space-separated list).
+    * **Logic:** `selected(age_served, [user_input])`
+    * **Description:** Checks if the user's selected age group is present within the capacity's `age_served` property.
+
+
+* **Gender (User Input):**
+    *  **Function:** `selected()` with an `or` condition.
+    * **Logic:** `selected(gender_served, [user_input]) or selected(gender_served, 'no_gender_restrictions')`
+    * **Description:** Evaluates if the user's selected gender matches the capacity's `gender_served` property, *but* automatically includes any capacity case where `gender_served` is flagged as having `'no_gender_restrictions'`.
+
+
+* **Community (User Input):**
+    * **Function:** `selected-all()` (Checks if *every* item in the user's input list exists in the case property).
+    * **Logic:** `selected-all(community_served, [user_inputs])`
+    * **Description:** Ensures that if a user searches for multiple specific community attributes, the capacity case must support *all* of them within its `community_served` property.
+
+
+* **Justice Involvement (User Input):**
+    * **Function:** `selected()`
+    * **Logic:** `selected(community_served, 'referred_from_court-judicial_system')`
+    * **Description:** A specific toggle that looks inside the `community_served` property for the exact court/judicial system flag.
+
+
+#### 2. Checks on the Parent `clinic` Case
+
+To filter capacity cases based on the facility they belong to, the query uses the **`ancestor-exists()`** function. This function tells the system: *"Only return this capacity case if its parent clinic meets the following conditions."* Inside the `ancestor-exists(parent, ...)` wrapper, the following checks are performed on the clinic:
+
+* **Base Clinic Status:** 
+    * **Function:** Simple equality and inequality checks.
+    * **Logic:** `@status = 'open' and current_status != 'closed' and exclude_from_ccs != 'yes'`
+    * **Description:** Ensures the parent clinic is open, active, and has not been explicitly hidden from the Client Care Search directory.
+
+
+* **Base Clinic Services (Required):**
+    * **Function:** `selected-any()` (Checks if *at least one* item in a list matches).
+    * **Logic:** `selected-any(mental_health_settings, '[list_of_valid_mh_codes]') or selected-any(residential_services, '[list_of_valid_res_codes]')`
+    * **Description:** The clinic must offer at least one valid, recognized mental health or residential service to be included in the search results.
+
+
+* **Site Closed Grace Period:** * **Function:** Compound equality and mathematical date check.
+    * **Logic:** `site_closed != 'yes' or (site_closed = 'yes' and site_closed_date >= [30 days ago])`
+    * **Description:** The clinic must not be closed. If it *is* marked as closed, its `site_closed_date` must be mathematically greater than or equal to 30 days ago.
+
+
+* **Facility Name (User Input):** * **Function:** `selected()` (used here to compare IDs).
+    * **Logic:** `selected(@case_id, [user_input_clinic_ids])`
+    * **Description:** If the user searches for specific facilities by name, the system looks up those clinics' case IDs and checks if the parent clinic's `@case_id` matches any of them.
+
+
+* **Location & Distance (User Input):**
+    * **Function:** `within-distance()` (A specialized geospatial search function).
+    * **Logic:** `within-distance("map_coordinates", "[user_geopoint]", "[user_distance_or_50]", "miles")`
+    * **Description:** Checks if the clinic's `map_coordinates` property falls within a certain radius of the user's provided geopoint. If the user doesn't specify a distance, it defaults to a 50-mile radius.
+
+
+* **Facility Category (User Input):**
+    * **Function:** Non-empty string checks (`!= ''`).
+    * **Logic:** Depending on the user's choice, it checks if `residential_services != ''` (Substance Use), `mental_health_settings != ''` (Mental Health), or both properties are not empty.
+    * **Description:** Filters facilities based on the overarching category of care by ensuring the corresponding service properties actually contain data.
+
+
+* **Dropdown/Multiselect Traits (User Inputs):**
+    * **Function:** `selected()`
+    * **Logic:** `selected(insurance, [input])`, `selected(language_services, [input])`, `selected(accessibility, [input])`, `selected(residential_services, [input])` (for ASAM levels and residential specific searches).
+    * **Description:** Evaluates if the specific values checked by the user exist within the clinic's space-separated properties for insurance, languages, accommodations, or specific residential services.
+
+
+* **Voluntary Treatment (User Input):**
+    * **Function:** `selected()`
+    * **Logic:** `selected(mental_health_settings, '72_hour_treatment_and_evaluation')`
+    * **Description:** If the user notes the client is involuntary, it forces the parent clinic to specifically have the 72-hour treatment setting.
+
+
+* **My Favorites (User Input):**
+    * **Function:** `selected()` evaluating against a dynamically loaded session variable.
+    * **Logic:** `selected(@case_id, instance('casedb')/casedb/case[@case_type='commcare-user'][...]/favorite_clinic_case_ids)`
+    * **Description:** If the user clicks the "Favorites" filter, the system loads the user's own `commcare-user` profile, reads their saved list of `favorite_clinic_case_ids`, and checks if the parent clinic's `@case_id` is in that list.
 ---
 
 ## Incoming Referrals
