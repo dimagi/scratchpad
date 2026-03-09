@@ -103,7 +103,18 @@ Created `query-builder-implementation-plan.md` — 8-task TDD implementation pla
 **Task sequence**: Feature flag → Data models → Service layer → Capability builder → Views + URLs → List template → Edit template → Query builder Alpine.js partial
 
 **Deferred items flagged in plan**:
-- Multi-slot components (`date_range` start/end, `within_distance` point/distance/unit) — partial only handles single-input components currently
 - `geopoint`/`within_distance` unusable until PostGIS extensions provisioned (per `infrastructure_design.md`)
 - Hard delete (currently deactivate-only)
 - `api.py` for MCP access
+
+## 2026-03-09 18:42 UTC — Claude - Martin's session (UTC-6)
+
+Revised `query-builder-implementation-plan.md` and `query_builder_tech_spec.md` after plan review. Plan expanded from 8 to 9 tasks. Changes:
+
+- **Added Task 5: Filter spec validation** — `validate_filter_spec()` checks tree structure, field existence, component/field compatibility, input slot completeness, parameter/auto_value refs. Raises `FilterSpecValidationError` caught by views → HTTP 400 + `{"errors": [...]}`. Also handles concurrent version number conflicts via `IntegrityError`.
+- **Added `COMPONENT_INPUT_SCHEMAS`** to capability builder (Task 4) — maps each component to its input slots. Used by both validation and UI rendering. Included in capability JSON response as `component_schemas`.
+- **Multi-slot support in query builder partial** (Task 9) — iterates `component_schemas[component]` instead of assuming single `value` slot. `date_range` now renders `start`/`end` inputs. Labels shown for multi-slot components.
+- **XSS fix**: Replaced `{{ capability|safe }}` with `json_script` template tag in edit template (Task 8). Case property names are user-controlled.
+- **Validation error display**: Added `validationErrors` to Alpine state, error alert with `<ul>` list before save button, cleared on re-save.
+- **Round-trip tests**: Added `TestEndpointRoundTrip` class testing complex nested spec through create → retrieve → new version cycle.
+- **Tech spec updates**: Added "Filter Spec Validation" section, "Component Input Schema" section with full `COMPONENT_INPUT_SCHEMAS` dict, updated UI section to describe multi-slot rendering and `json_script` usage, marked open questions 1 and 2 as resolved.
