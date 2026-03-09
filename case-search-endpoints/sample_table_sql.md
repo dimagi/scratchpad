@@ -238,6 +238,65 @@ FROM case_referral r
 LEFT JOIN case_client c ON r.parent_case_id = c.case_id
 JOIN case_clinic clinic ON r.referring_clinic_case_id = clinic.case_id
 ```
+### Filter Logic
+Here is the detailed breakdown of how the filtering is executed for **Module 9 (Incoming Referrals)**.
+
+In this module, the search is performed against **`referral`** cases. However, because referrals are intrinsically linked to the person receiving care, several filters use the `ancestor-exists()` function to query the properties of the parent **`client`** case.
+
+#### 1. Direct Checks on the `referral` Case
+
+These filters evaluate the properties living directly on the incoming referral record.
+
+* **Platform Routing & Ownership (Base Filter):**
+    * **Function:** Inequality check (`!=`) paired with a dynamic `selected()` function.
+    * **Logic:** `send_to_destination_clinic != "no" and selected(destination_clinic_case_id, [list_of_users_clinic_ids])`
+    * **Description:** First, it ensures the referral is meant to be processed inside the app (excluding off-platform manual referrals). Second, it dynamically looks up all the clinic cases tied to the user's assigned locations, checking if the referral's `destination_clinic_case_id` matches one of the clinics the user actually works at.
+
+
+* **Referral Status (User Input or Default):**
+    * **Function:** `selected()` check for user inputs, or a compound equality check for the default state.
+    * **Logic:** If the user selects statuses, it evaluates `selected(current_status, '[user_inputs]')`. If left blank, it defaults to `current_status = "open" or current_status = "info_requested"`.
+    * **Description:** By default, the inbox keeps out the clutter by only showing referrals that are actively awaiting a decision or waiting on more information. If a user uses the "Current Status" filter, it overrides the default to show whatever specific statuses they select (e.g., rejected, closed).
+
+
+* **Date Received (User Input):**
+    * **Function:** Greater-than-or-equal-to (`>=`) and less-than-or-equal-to (`<=`) mathematical date checks, utilizing the `substr()` string-extraction function.
+    * **Logic:** `date_opened >= "[start_date]" and date_opened <= "[end_date]"`
+    * **Description:** The user-facing search field is a date-range widget. The system extracts the start and end dates from that widget and filters out any referrals where the `date_opened` does not fall exactly within or on those boundaries.
+
+
+#### 2. Checks on the Parent `client` Case
+
+To filter incoming referrals based on the traits of the actual patient, the query wraps the following logic inside the **`ancestor-exists()`** function. This function dictates: *"Only return this referral if the parent client case meets the following conditions."*
+
+* **Base Client Validation (Always Applied):**
+    * **Function:** Simple equality checks.
+    * **Logic:** `@status = "open" and @case_type = "client" and central_registry = "no"`
+    * **Description:** Every referral shown must belong to an active, open client case. Furthermore, it explicitly filters out any clients flagged in the `central_registry` (ensuring registry management cases don't bleed into the facility's active inbox).
+
+
+* **Age Range (User Input):**
+    * **Function:** Simple equality check.
+    * **Logic:** `age_range = '[user_input]'`
+    * **Description:** If the user filters by age, it checks if the parent client's calculated `age_range` text property (e.g., "adults", "minors_adolescents") exactly matches the dropdown selection.
+
+
+* **Gender (User Input):**
+    * **Function:** `selected()` with an `or` condition.
+    * **Logic:** `selected(gender, '[user_input]') or selected(gender, 'no_gender_restrictions')`
+    * **Description:** Checks if the parent client's `gender` property contains the user's selection. Similar to the bed search, it includes a fallback to safely return cases where gender restrictions do not apply.
+
+
+* **Type of Care (User Input):**
+    * **Function:** Simple equality check.
+    * **Logic:** `type_of_care = '[user_input]'`
+    * **Description:** Ensures the parent client's overarching `type_of_care` property (e.g., mental health, substance use) exactly matches the category the user is searching for.
+
+
+* **Client ID (User Input):**
+    * **Function:** Simple equality check.
+    * **Logic:** `client_id = "[user_input]"`
+    * **Description:** Allows the facility user to search for a specific referral by typing in the parent client's exact, 8-character alphanumeric `client_id`.
 
 ---
 
