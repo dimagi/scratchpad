@@ -46,3 +46,33 @@ Prior session activity (Ethan, 2026-03-05 through 2026-03-07):
 - Created `query-builder-mockup.html` — UI mockup in CommCare form-builder style
 - **Key decisions made**: SQLAlchemy Core (not Django ORM, not raw SQL) for schema/DDL/queries; backend defines operations + field type compatibility (not field-specific); ancestor/subcase queries out of scope for initial design; development to be entirely test-driven
 - **PoC priorities established**: Schema generation → Data population → Cross-relationship queries (JOINs) → Performance at scale → Query translation (deferred)
+
+## 2026-03-09 — Claude - Ethan's session (UTC-5) — Implementation
+
+Implemented the full project DB PoC on branch `es/project-db` in commcare-hq. Used subagent-driven development with TDD. 16 commits total.
+
+**Modules created** (`corehq/apps/project_db/`):
+- `schema.py` — table name generation, SQLAlchemy Table builder (fixed + dynamic + relationship columns), data dictionary integration (`build_tables_for_domain`)
+- `populate.py` — case upsert via `INSERT ... ON CONFLICT`, type coercion (date/number), `case_to_row_dict` bridge from `CommCareCase`
+- `table_manager.py` — DDL creation, append-only schema evolution (add columns + indexes)
+
+**Code review findings addressed:**
+- Fixed `case_json` key collision risk by namespacing dynamic properties under `prop.` prefix in the intermediate dict format
+- Added DDL name validation (regex guard against SQL injection from user-editable property names)
+- Added `owner_id` and `modified_on` indexes per design doc
+- Extended `evolve_table` to create missing indexes alongside missing columns
+
+**Refactoring:**
+- Consolidated 6 modules → 3: `schema_gen` merged into `schema`, `coerce` and `case_adapter` merged into `populate`
+- Organized files by newspaper metaphor (public API at top, private helpers below)
+- Namespaced dynamic properties behind `prop.` prefix in `case_data` dicts, eliminating collision guard
+
+**Test results:**
+- 82 tests passing (schema, DDL, upsert, coercion, case adapter, cross-relationship JOINs)
+- JOIN query performance: ~18ms for 11k rows with parent district filter
+- Performance test file removed from branch (was marked `@slow`, can be recreated)
+
+**Design decision: `prop.` namespace in case_data dicts**
+- Keys use three namespaces: bare names for fixed fields (`case_id`), `prop.<name>` for dynamic properties, `indices` for relationships
+- Maps to column names: `prop.first_name` → `prop_first_name` column
+- Eliminates ambiguity between fixed fields and dynamic properties from `case_json`
