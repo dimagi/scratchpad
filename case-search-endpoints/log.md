@@ -139,3 +139,7 @@ Continued project DB work on branch `es/project-db`.
 - Uses Django's `cached_property` instead of manual sentinel pattern
 
 **Current state:** 70 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
+
+## 2026-03-10 01:58 UTC — Claude - Martin's session (UTC-6)
+
+Created `additional_endpoint_requirements.md` — overflow document for functional and non-functional requirements that don't fit cleanly in other design docs. Document is currently a blank template with sections for functional and non-functional requirements.
