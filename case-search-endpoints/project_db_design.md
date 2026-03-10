@@ -68,6 +68,8 @@ patient_table = Table(
     Column('closed', Boolean),
     Column('external_id', Text),
     Column('server_modified_on', DateTime(timezone=True)),
+    Column('parent_id', Text),
+    Column('host_id', Text),
     # Dynamic columns from data dictionary
     Column('prop_first_name', Text),
     Column('prop_dob', Text),
@@ -75,8 +77,6 @@ patient_table = Table(
     Column('prop_age', Text),
     Column('prop_age_numeric', Numeric),
     Column('prop_risk_level', Text),
-    # FK to parent case type
-    Column('idx_parent', Text, ForeignKey('projectdb_myproject_household.case_id')),
 )
 ```
 
@@ -93,6 +93,8 @@ patient_table = Table(
 | `closed`        | Boolean     |                                      |
 | `external_id`   | Text        | Nullable                             |
 | `server_modified_on` | DateTime(tz) |                                |
+| `parent_id`     | Text        | Nullable; `case_id` of parent index  |
+| `host_id`       | Text        | Nullable; `case_id` of host index    |
 
 #### Dynamic Columns (from data dictionary)
 
@@ -108,34 +110,35 @@ columns:
 Text properties only get the raw column (no separate typed column
 needed).
 
-### Relationships (Foreign Keys)
+### Relationships
 
-Case indices (parent/child, host/extension) are represented as foreign
-key columns on the child table, referencing the parent table's
-`case_id`.
+The two most common case index identifiers — `parent` and `host` —
+are stored as fixed, nullable columns on every project DB table:
 
-For a `patient` case type with a `parent` index pointing to `household`:
+| Column      | Source                                          |
+|-------------|-------------------------------------------------|
+| `parent_id` | `CommCareCaseIndex` with `identifier='parent'`  |
+| `host_id`   | `CommCareCaseIndex` with `identifier='host'`    |
 
+These are plain Text columns with no foreign key constraints (the async
+change feed does not guarantee write order across case types). They
+support JOINs at query time:
+
+```python
+patient = tables['patient']
+household = tables['household']
+
+query = (
+    select(patient.c.case_id, patient.c.case_name)
+    .join(household, patient.c.parent_id == household.c.case_id)
+    .where(household.c.prop_district == 'Kamuli')
+)
 ```
-projectdb_myproject_patient
-├── ...
-├── idx_parent        Text  FK → projectdb_myproject_household(case_id)
-└── ...
-```
 
-#### Open Questions — Relationships
-
-- A case can have multiple indices of different types. Each gets its own
-  FK column.
-- What happens when the index target case type is ambiguous or
-  inconsistent? (e.g., `parent` sometimes points to `household`,
-  sometimes to `clinic`) Options:
-  - Use the data dictionary relationship definitions as the source of
-    truth; ignore non-conforming indices
-  - Store the FK as plain text (no constraint) and leave joins to
-    query time
-- Should we store the index identifier (e.g., "parent") as a column
-  name prefix, or use the relationship name from the data dictionary?
+Cases without a parent or host index get NULLs in those columns.
+Cases with non-standard index identifiers (e.g., custom relationship
+names) are not captured by these columns; support for additional
+index types can be added later if needed.
 
 ## Schema Management
 
@@ -208,7 +211,8 @@ stmt = insert(patient_table).values(
     case_name=case.name,
     prop_dob=case.get_case_property('dob'),
     prop_dob_date=try_parse_date(case.get_case_property('dob')),
-    idx_parent=case.get_index('parent'),
+    parent_id=get_index_ref(case, 'parent'),
+    host_id=get_index_ref(case, 'host'),
     ...
 )
 stmt = stmt.on_conflict_do_update(
@@ -272,7 +276,7 @@ household = tables['household']
 
 query = (
     select(patient.c.case_id, patient.c.case_name)
-    .join(household, patient.c.idx_parent == household.c.case_id)
+    .join(household, patient.c.parent_id == household.c.case_id)
     .where(and_(
         household.c.prop_district == 'Kamuli',
         patient.c.prop_dob_date > date(2020, 1, 1),
@@ -296,7 +300,7 @@ At minimum:
 
 - Primary key on `case_id`
 - Index on `owner_id`
-- Index on FK columns (for JOIN performance)
+- Index on `parent_id` and `host_id` (for JOIN performance)
 - Index on `modified_on` (for change-feed-style queries)
 - Composite indexes on commonly filtered columns (TBD, possibly
   driven by usage patterns or explicit configuration)
@@ -333,8 +337,9 @@ created alongside the table via `metadata.create_all()`.
 6. **Backfill performance**: For large projects (millions of cases),
    how long does initial population take? Can it be done incrementally?
 
-7. **Relationship ambiguity**: When case indices don't conform to data
-   dictionary definitions, what's the fallback behavior?
+7. ~~**Relationship ambiguity**~~: Resolved. Fixed `parent_id` and
+   `host_id` columns cover the common cases. Non-standard index
+   identifiers are simply not captured; support can be added later.
 
 ## Out of Scope (For Now)
 
