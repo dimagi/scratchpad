@@ -174,3 +174,11 @@ Added two requirements to `additional_endpoint_requirements.md`:
 
 - **Data Freshness** (functional): Web users must see case updates reflected immediately in subsequent endpoint searches. Two viable approaches documented: synchronous write during form submission, or local memory cache merged with endpoint results. Approach not yet decided.
 - **Performance / USS** (non-functional): p95 targets for US Solutions projects — open case list (search + render): 3s; form submission: 3s.
+
+## 2026-03-10 16:37 UTC — Claude - Woody's session (UTC-6)
+
+Updated `CLAUDE.md` with project goals and process:
+
+- **Goals section** added (expanding the former "Purpose" section): (1) improve developer skills and AI collaboration, producing learnings and a repeatable process transferable to other codebases; (2) determine feasibility of case search endpoints using project DB tables.
+- **Process section** added: research → design → plan → implement cycle per [Claude Superpowers plugin](https://claude.com/plugins/superpowers); artifacts-first principle; smallest-possible-scope per cycle; applies to both human developers and AI agents.
+- **AI Role section** updated to explicitly require following the process before moving to a later phase.
