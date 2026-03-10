@@ -63,9 +63,10 @@ When a user types into the search fields, the query builds a specialized `OR` st
  
 
 * **Date of Birth (User Input & Fuzzy Matching):**
-    * **Function:** Equality check, `subcase-exists()`, and mathematical date checks.
-    * **Logic:** If exact match: `dob = "[input]" or subcase-exists('alias', dob = "[input]")`. If the user enables the `fuzzy_match_dob` toggle, it expands to check if the DOB is within +/- 1 year (or similar configured range) of the inputted date on both the client and alias records.
-    * **Description:** Searches the primary DOB and any alias DOBs. The fuzzy match allows for common data entry errors in birthdays (like swapping the month and day, or being off by one year).
+    * **Function:** Equality (=), fuzzy-date(), and subcase-exists() within conditional logic (if()).
+    * **Logic:** if(fuzzy_match_dob = 'yes', fuzzy-date(dob, "[input]") or subcase-exists('alias', fuzzy-date(dob, "[input]")), dob = "[input]" or subcase-exists('alias', dob = "[input]"))
+    * **Description:** The query evaluates the fuzzy_match_dob checkbox. If it is left unchecked, the system performs a strict equality check, looking for an exact date match on either the primary client record or any of their alias subcases. If the user toggles the fuzzy match on, the query employs the fuzzy-date() function. This function automatically generates common typographical permutations of the inputted date—such as accidentally swapping the month and day, or reversing the digits in the day, month, or the decade portion of the year. It then checks if the primary DOB or any historically recorded alias DOB matches any of those generated valid dates.
+ 
 
 
 * **Social Security Number & Medicaid ID (User Inputs):**
@@ -182,8 +183,9 @@ Just like in the statewide search, users need to be able to find their own patie
 
 
 * **Date of Birth (User Input & Fuzzy Matching):**
-    * **Function:** Equality check, `subcase-exists()`, and mathematical/fuzzy date matching.
-    * **Logic:** Checks `dob = "[input]" or subcase-exists('alias', dob = "[input]")`. If `fuzzy_match_dob` is enabled, it mathematically expands the search to catch dates within a configured error margin (like +/- 1 year) across both the root client and alias records.
+    * **Function:** Equality (=), fuzzy-date(), and subcase-exists() within conditional logic (if()).
+    * **Logic:** if(fuzzy_match_dob = 'yes', fuzzy-date(dob, "[input]") or subcase-exists('alias', fuzzy-date(dob, "[input]")), dob = "[input]" or subcase-exists('alias', dob = "[input]"))
+    * **Description:** The query evaluates the fuzzy_match_dob checkbox. If it is left unchecked, the system performs a strict equality check, looking for an exact date match on either the primary client record or any of their alias subcases. If the user toggles the fuzzy match on, the query employs the fuzzy-date() function. This function automatically generates common typographical permutations of the inputted date—such as accidentally swapping the month and day, or reversing the digits in the day, month, or the decade portion of the year. It then checks if the primary DOB or any historically recorded alias DOB matches any of those generated valid dates.
 
 
 * **Social Security Number & Medicaid ID (User Inputs):**
