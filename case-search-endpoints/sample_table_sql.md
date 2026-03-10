@@ -35,65 +35,61 @@ Here is the detailed breakdown of the filtering logic for **Search and Admit Cli
 
 Because this module queries a statewide/centralized patient registry, its `_xpath_query` is uniquely complex. It is designed to find patients not just by their primary demographics, but also by any alternate identities (aliases) they might have used in the past. It achieves this by checking the root `client` case and dynamically traversing down into child `alias` cases using CommCare's `subcase-exists()` function.
 
+### Filtering Logic
+
+Here is the detailed breakdown of the filtering logic for **Search and Admit Client** from the **Central Registry** app.
+
+Because this module queries a statewide/centralized patient registry, its filtering is designed to find patients not just by their primary demographics, but also by any alternate identities (aliases) they might have used in the past. In the normalized table structure, alias data is available as directly joined columns from `case_alias` (prefixed `alias_`), so filters that previously required traversal via `subcase-exists('alias', ...)` can now be expressed as standard `OR` conditions against those columns.
+
 #### 1. Base Filtering (Always Applied)
 
-These filters evaluate properties living directly on the root `client` record to ensure only valid registry patients are returned.
+These filters evaluate columns on the `case_client` table to ensure only valid registry patients are returned.
 
 * **Registry Validation:**
-    * **Function:** Simple equality check.
-    * **Logic:** `central_registry = 'yes'`
+    * **Column:** `c.central_registry`
+    * **Logic:** `c.central_registry = 'yes'`
     * **Description:** Ensures the client is actually enrolled in the centralized database, keeping local/draft cases out of the statewide search.
 
-
 * **Active Status:**
-    * **Function:** Simple inequality check.
-    * **Logic:** `current_status != 'pending'`
+    * **Column:** `c.current_status`
+    * **Logic:** `c.current_status != 'pending'`
     * **Description:** Excludes client profiles that are still in a "pending" state (e.g., they were started but never finished or are awaiting deduplication/approval).
 
+#### 2. Dynamic User Filters
 
-
-#### 2. Dynamic User Filters & Alias Traversal
-
-When a user types into the search fields, the query builds a specialized `OR` statement for almost every demographic. It checks if the value matches the primary `client` record **OR** if it matches any child `alias` record tied to that client.
+When a user types into the search fields, the query checks whether the value matches the primary `case_client` columns **OR** the corresponding `case_alias` columns in the same row. Because aliases are left-joined, rows where no alias exists will have `NULL` alias columns and will still match on the primary columns alone.
 
 * **First Name & Last Name (User Input):**
-    * **Function:** `fuzzy-match()`, `phonetic-match()`, and `subcase-exists()` combined with `or` operators.
-    * **Logic:** `(fuzzy-match(first_name, "[input]") or phonetic-match(first_name, "[input]")) or subcase-exists('alias', fuzzy-match(first_name, "[input]") or phonetic-match(first_name, "[input]"))` *(The exact same logic structure is repeated for `last_name`)*.
-    * **Description:** Instead of requiring an exact spelling match, the system casts a wide net to prevent creating duplicate patients. It checks the primary client record to see if the name inputted has a minor typo (`fuzzy-match()`) or sounds similar to the database value (`phonetic-match()`). If the root client doesn't match, it dives into the client's subcases and checks if *any* historically recorded alias fuzzily or phonetically matches the input.
- 
+    * **Columns:** `c.first_name`, `c.last_name`, `a.first_name`, `a.last_name`
+    * **Logic:** `(fuzzy-match(c.first_name, [input]) OR phonetic-match(c.first_name, [input])) OR (fuzzy-match(a.first_name, [input]) OR phonetic-match(a.first_name, [input]))` *(The exact same logic structure is repeated for `last_name`)*
+    * **Description:** Instead of requiring an exact spelling match, the filter casts a wide net to prevent creating duplicate patients. It checks both the primary client columns and the joined alias columns for fuzzy or phonetic matches in a single pass.
 
 * **Date of Birth (User Input & Fuzzy Matching):**
-    * **Function:** Equality (=), fuzzy-date(), and subcase-exists() within conditional logic (if()).
-    * **Logic:** if(fuzzy_match_dob = 'yes', fuzzy-date(dob, "[input]") or subcase-exists('alias', fuzzy-date(dob, "[input]")), dob = "[input]" or subcase-exists('alias', dob = "[input]"))
-    * **Description:** The query evaluates the fuzzy_match_dob checkbox. If it is left unchecked, the system performs a strict equality check, looking for an exact date match on either the primary client record or any of their alias subcases. If the user toggles the fuzzy match on, the query employs the fuzzy-date() function. This function automatically generates common typographical permutations of the inputted date—such as accidentally swapping the month and day, or reversing the digits in the day, month, or the decade portion of the year. It then checks if the primary DOB or any historically recorded alias DOB matches any of those generated valid dates.
- 
-
+    * **Columns:** `c.dob`, `a.alias_dob`
+    * **Logic:** `IF(fuzzy_match_dob = 'yes', fuzzy-date(c.dob, [input]) OR fuzzy-date(a.alias_dob, [input]), c.dob = [input] OR a.alias_dob = [input])`
+    * **Description:** Evaluates the `fuzzy_match_dob` toggle. If unchecked, performs a strict equality check against both the primary and alias DOB columns. If toggled on, applies `fuzzy-date()` to both columns, catching common typographical permutations such as swapped month/day or reversed year digits.
 
 * **Social Security Number & Medicaid ID (User Inputs):**
-    * **Function:** Simple equality check combined with `subcase-exists()`.
-    * **Logic:** `social_security_number = "[input]" or subcase-exists('alias', social_security_number = "[input]")` (Same for `medicaid_id`).
-    * **Description:** Cross-references the inputted SSN or Medicaid ID against both the primary record and any historical/alias identifiers attached to the client.
-
+    * **Columns:** `c.social_security_number`, `a.alias_ssn`, `c.medicaid_id`, `a.alias_medicaid`
+    * **Logic:** `c.social_security_number = [input] OR a.alias_ssn = [input]` *(Same pattern for `medicaid_id` / `alias_medicaid`)*
+    * **Description:** Cross-references the input against both the primary and alias identifier columns in the same row.
 
 * **Middle Name (User Input):**
-    * **Function:** Simple equality check.
-    * **Logic:** `middle_name = "[input]"`
-    * **Description:** Checks the primary client record for a matching middle name. (Note: Unlike first/last name, middle names are often not rigorously tracked in alias subcases depending on your exact configuration).
-
+    * **Column:** `c.middle_name`
+    * **Logic:** `c.middle_name = [input]`
+    * **Description:** Checks only the primary client record. Middle names are not tracked in `case_alias`, so no alias column check is needed here.
 
 * **Case ID (User Input):**
-    * **Function:** Equality check on metadata properties.
-    * **Logic:** `@case_id = "[input]" or subcase-exists('alias', @case_id = "[input]")`
-    * **Description:** Allows a user to directly pull up a client if they know the exact system ID, checking both the parent client ID and any associated alias IDs.
-
-
+    * **Columns:** `c.case_id`, `a.alias_case_id`
+    * **Logic:** `c.case_id = [input] OR a.alias_case_id = [input]`
+    * **Description:** Allows a direct lookup by system ID, checking both the primary client ID and the joined alias case ID column.
 
 #### 3. Special Validation Filters
 
 * **Consent Collected (User Input):**
-    * **Function:** Simple equality check.
-    * **Logic:** `consent_collected = "[input]"`
-    * **Description:** Evaluates the `consent_collected` flag. In highly secure central registries, searching for certain clients may be restricted unless the user explicitly checks a box confirming they have collected ROI (Release of Information) or consent from the patient standing in front of them.
+    * **Column:** `c.consent_collected`
+    * **Logic:** `c.consent_collected = [input]`
+    * **Description:** Evaluates the `consent_collected` flag on the primary client record. In highly secure central registries, searching for certain clients may be restricted unless the user explicitly confirms they have collected ROI (Release of Information) or consent from the patient.
 
 
 ---
