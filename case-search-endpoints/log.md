@@ -143,3 +143,27 @@ Continued project DB work on branch `es/project-db`.
 ## 2026-03-10 01:58 UTC — Claude - Woody's session (UTC-6)
 
 Created `additional_endpoint_requirements.md` — overflow document for functional and non-functional requirements that don't fit cleanly in other design docs. Document is currently a blank template with sections for functional and non-functional requirements.
+
+## 2026-03-10 — Claude - Ethan's session (UTC-5)
+
+Continued project DB work on branch `es/project-db`.
+
+**Walked back `CaseTable` class:**
+- Removed `CaseTable` and related commits entirely
+- Kept only the table reflection functionality as standalone `get_case_table_schema(domain, case_type)` function
+- Updated full-stack test to use `build_tables_for_domain` directly
+
+**Relationship support re-added with simpler design:**
+- **Decision**: Instead of dynamic `idx_<identifier>` columns derived from relationship metadata, use fixed `parent_id` and `host_id` columns on every table. These cover the two most common `CommCareCaseIndex` identifiers (`parent` and `host`). No FK constraints (async change feed doesn't guarantee write order).
+- Added `parent_id` (Text, nullable) and `host_id` (Text, nullable) to `build_table_for_case_type` fixed columns
+- Both columns get database indexes for JOIN performance
+- `case_to_row_dict` extracts `referenced_id` from `case.live_indices` matching `identifier='parent'` and `identifier='host'`; cases without those indices get NULLs
+- Non-standard index identifiers (custom relationship names) are not captured; can be added later
+- **Open question Q7 (relationship ambiguity) marked resolved** in `project_db_design.md`
+- Updated `project_db_design.md`: fixed columns table, example schema, population example, query example, indexing section
+
+**Test cleanup:**
+- Replaced raw `DROP TABLE` SQL in all test teardowns with `table.drop(engine, checkfirst=True)`
+- Consolidated full-stack test into single test covering data dictionary → schema → DDL → populate → single-table query → cross-case-type JOIN
+
+**Current state:** 74 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
