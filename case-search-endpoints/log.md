@@ -167,3 +167,10 @@ Continued project DB work on branch `es/project-db`.
 - Consolidated full-stack test into single test covering data dictionary → schema → DDL → populate → single-table query → cross-case-type JOIN
 
 **Current state:** 74 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
+
+## 2026-03-10 16:09 UTC — Claude - Woody's session (UTC-6)
+
+Added two requirements to `additional_endpoint_requirements.md`:
+
+- **Data Freshness** (functional): Web users must see case updates reflected immediately in subsequent endpoint searches. Two viable approaches documented: synchronous write during form submission, or local memory cache merged with endpoint results. Approach not yet decided.
+- **Performance / USS** (non-functional): p95 targets for US Solutions projects — open case list (search + render): 3s; form submission: 3s.
