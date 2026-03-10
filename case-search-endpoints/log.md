@@ -118,3 +118,24 @@ Revised `query-builder-implementation-plan.md` and `query_builder_tech_spec.md` 
 - **Validation error display**: Added `validationErrors` to Alpine state, error alert with `<ul>` list before save button, cleared on re-save.
 - **Round-trip tests**: Added `TestEndpointRoundTrip` class testing complex nested spec through create → retrieve → new version cycle.
 - **Tech spec updates**: Added "Filter Spec Validation" section, "Component Input Schema" section with full `COMPONENT_INPUT_SCHEMAS` dict, updated UI section to describe multi-slot rendering and `json_script` usage, marked open questions 1 and 2 as resolved.
+
+## 2026-03-10 — Claude - Ethan's session (UTC-5)
+
+Continued project DB work on branch `es/project-db`.
+
+**Relationship support removed:**
+- Removed `relationships_by_type` param from `build_tables_for_domain`, `relationships` param from `build_table_for_case_type`
+- Deleted `_build_relationship_columns`, all `idx_*` column generation, and relationship index creation
+- Removed `indices` key handling from `case_to_row_dict` and `_build_values_dict` in `populate.py`
+- Deleted `test_queries.py` (all cross-case-type JOIN tests)
+- Test count: 82 → 62. Decision: re-add relationships later when design is clearer.
+
+**Added `CaseTable` class** (`schema.py`):
+- Lightweight handle initialized with `(domain, case_type)` for lazy access to project DB table metadata
+- `table_name` — deterministic PG table name (no DB hit, `cached_property`)
+- `dd_case_type` — `CaseType` model from data dictionary (`cached_property`, raises `DoesNotExist`)
+- `get_desired_table_schema()` — SQLAlchemy `Table` built from data dictionary (method, not cached — schema can change between calls)
+- `table_schema` — SQLAlchemy `Table` reflected from PostgreSQL via `autoload_with`, or `None` (`cached_property`, uses try/except `NoSuchTableError` instead of listing all tables)
+- Uses Django's `cached_property` instead of manual sentinel pattern
+
+**Current state:** 70 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
