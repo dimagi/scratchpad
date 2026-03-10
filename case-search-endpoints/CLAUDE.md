@@ -1,8 +1,14 @@
 # Case Search Endpoints — Project Instructions
 
-## Purpose
+## Goals
 
-This directory is a collaborative workspace for designing and planning the case search endpoints feature (project databases + configurable query builder). Work proceeds in three phases:
+This directory is a collaborative workspace for designing and planning the case search endpoints feature (project databases + configurable query builder). The project has two goals:
+
+1. **Improve developer skills and collaboration using AI tools** — create artifacts and develop code across a distributed team collaboratively via an AI-assisted process, in order to determine feasibility and an implementation plan for a foundational new CommCare feature in a short period of time. Learnings, updated Claude skills, and a repeatable process that can be applied to other areas of the codebase should be outputs of this work.
+
+2. **Determine feasibility of case search endpoints using project database tables** — determine whether a project database can be built and used as a backend for a case search endpoint, and progress as far as possible toward a stable implementation that satisfies the requirements outlined in this repo.
+
+Work proceeds in three phases:
 
 1. **Spec / Design** — explore approaches, identify trade-offs, surface issues
 2. **Implementation Plan** — break down into actionable tasks, sequence work
@@ -10,8 +16,17 @@ This directory is a collaborative workspace for designing and planning the case 
 
 Multiple human developers and AI agents may be working in parallel across different sessions.
 
-## AI Role (Phases 1 & 2)
+## Process
 
+Developers and AI agents should follow a research → design → plan → implement cycle, as defined by the [Claude Superpowers plugin](https://claude.com/plugins/superpowers). Key principles:
+
+- **Artifacts first** — focus on creating comprehensive design and planning artifacts before moving to implementation. Do not skip or compress phases.
+- **Smallest possible scope** — split the research/design/plan/implement cycle into the smallest practical technical component before beginning each cycle.
+- This process applies to both human developers and AI agents.
+
+## AI Role
+
+- Follow the research/design/plan/implement process above — do not move to a later phase without completing prior phases
 - Explore alternative approaches and weigh them against each other
 - Push back on proposals when there are meaningful concerns — but not aggressively
 - Flag gaps, edge cases, and hidden assumptions in anything proposed
