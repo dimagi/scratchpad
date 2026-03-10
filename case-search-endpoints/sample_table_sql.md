@@ -57,10 +57,10 @@ These filters evaluate properties living directly on the root `client` record to
 When a user types into the search fields, the query builds a specialized `OR` statement for almost every demographic. It checks if the value matches the primary `client` record **OR** if it matches any child `alias` record tied to that client.
 
 * **First Name & Last Name (User Input):**
-    * **Function:** Equality check combined with `subcase-exists()`.
-    * **Logic:** `first_name = "[input]" or subcase-exists('alias', first_name = "[input]")` (Same logic applies to `last_name`).
-    * **Description:** If the user searches for "John", the system checks if the primary client's first name is John. If it isn't, it dives into the client's subcases to see if they have an `alias` case where the first name is John (e.g., catching maiden names, legal name changes, or preferred names).
-
+    * **Function:** `fuzzy-match()`, `phonetic-match()`, and `subcase-exists()` combined with `or` operators.
+    * **Logic:** `(fuzzy-match(first_name, "[input]") or phonetic-match(first_name, "[input]")) or subcase-exists('alias', fuzzy-match(first_name, "[input]") or phonetic-match(first_name, "[input]"))` *(The exact same logic structure is repeated for `last_name`)*.
+    * **Description:** Instead of requiring an exact spelling match, the system casts a wide net to prevent creating duplicate patients. It checks the primary client record to see if the name inputted has a minor typo (`fuzzy-match()`) or sounds similar to the database value (`phonetic-match()`). If the root client doesn't match, it dives into the client's subcases and checks if *any* historically recorded alias fuzzily or phonetically matches the input.
+ 
 
 * **Date of Birth (User Input & Fuzzy Matching):**
     * **Function:** Equality check, `subcase-exists()`, and mathematical date checks.
@@ -176,9 +176,9 @@ Because the user is searching *their* specific admissions, certain search fields
 Just like in the statewide search, users need to be able to find their own patients even if the patient's name or ID has changed over time. The query checks the root `client` record **OR** any child `alias` record.
 
 * **First Name & Last Name (User Input):**
-    * **Function:** Equality check combined with `subcase-exists()`.
-    * **Logic:** `first_name = "[input]" or subcase-exists('alias', first_name = "[input]")`
-    * **Description:** Searches the primary client name and any historically documented names (aliases) attached to the client.
+    * **Function:** `fuzzy-match()`, `phonetic-match()`, and `subcase-exists()` combined with `or` operators.
+    * **Logic:** `(fuzzy-match(first_name, "[input]") or phonetic-match(first_name, "[input]")) or subcase-exists('alias', fuzzy-match(first_name, "[input]") or phonetic-match(first_name, "[input]"))` *(The exact same logic structure is repeated for `last_name`)*.
+    * **Description:** Instead of requiring an exact spelling match, the system casts a wide net to prevent creating duplicate patients. It checks the primary client record to see if the name inputted has a minor typo (`fuzzy-match()`) or sounds similar to the database value (`phonetic-match()`). If the root client doesn't match, it dives into the client's subcases and checks if *any* historically recorded alias fuzzily or phonetically matches the input.
 
 
 * **Date of Birth (User Input & Fuzzy Matching):**
