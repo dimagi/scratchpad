@@ -96,10 +96,6 @@ When a user types into the search fields, the query builds a specialized `OR` st
     * **Description:** Evaluates the `consent_collected` flag. In highly secure central registries, searching for certain clients may be restricted unless the user explicitly checks a box confirming they have collected ROI (Release of Information) or consent from the patient standing in front of them.
 
 
-* **Reason for No SSN (User Input):**
-    * **Function:** Simple equality check.
-    * **Logic:** `reason_for_no_ssn = "[input]"`
-    * **Description:** If a user searches for a client without an SSN, they can filter by the documented reason (e.g., undocumented, refused to provide), ensuring they find the exact matching profile.
 ---
 
 ## Search My Clients
