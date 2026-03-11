@@ -71,12 +71,12 @@ patient_table = Table(
     Column('parent_id', Text),
     Column('host_id', Text),
     # Dynamic columns from data dictionary
-    Column('prop_first_name', Text),
-    Column('prop_dob', Text),
-    Column('prop_dob_date', Date),
-    Column('prop_age', Text),
-    Column('prop_age_numeric', Numeric),
-    Column('prop_risk_level', Text),
+    Column('prop__first_name', Text),
+    Column('prop__dob', Text),
+    Column('prop__dob__date', Date),
+    Column('prop__age', Text),
+    Column('prop__age__numeric', Numeric),
+    Column('prop__risk_level', Text),
 )
 ```
 
@@ -101,9 +101,9 @@ patient_table = Table(
 Each case property declared in the data dictionary gets one or two
 columns:
 
-- **Raw column** (`prop_<name>`): always `Text`, stores the original
+- **Raw column** (`prop__<name>`): always `Text`, stores the original
   value as-is
-- **Typed column** (`prop_<name>_<type>`): stores the value cast to its
+- **Typed column** (`prop__<name>__<type>`): stores the value cast to its
   declared type (`Numeric`, `Date`, `DateTime(timezone=True)`, `Boolean`).
   Null if the raw value can't be coerced.
 
@@ -131,7 +131,7 @@ household = tables['household']
 query = (
     select(patient.c.case_id, patient.c.case_name)
     .join(household, patient.c.parent_id == household.c.case_id)
-    .where(household.c.prop_district == 'Kamuli')
+    .where(household.c.prop__district == 'Kamuli')
 )
 ```
 
@@ -149,12 +149,12 @@ properties, property data types, and relationships between case types.
 
 ### Schema Generation
 
-A `ProjectDBSchema` class reads from the data dictionary and produces
+`build_tables_for_domain()` reads from the data dictionary and produces
 SQLAlchemy `Table` objects. This is the single point of translation
 between data dictionary models and the database schema.
 
 ```
-Data Dictionary → ProjectDBSchema → SQLAlchemy Table objects → DDL
+Data Dictionary → build_tables_for_domain() → SQLAlchemy Table objects → DDL
 ```
 
 ### Schema Evolution
@@ -209,8 +209,8 @@ stmt = insert(patient_table).values(
     case_id=case.case_id,
     owner_id=case.owner_id,
     case_name=case.name,
-    prop_dob=case.get_case_property('dob'),
-    prop_dob_date=try_parse_date(case.get_case_property('dob')),
+    prop__dob=case.get_case_property('dob'),
+    prop__dob__date=try_parse_date(case.get_case_property('dob')),
     parent_id=get_index_ref(case, 'parent'),
     host_id=get_index_ref(case, 'host'),
     ...
@@ -256,17 +256,17 @@ The `SQLCaseSearchBackend` translates a filter spec tree into
 SQLAlchemy expressions:
 
 - **AND/OR/NOT** → `and_()`, `or_()`, `not_()`
-- **exact_match** → `table.c.prop_name == value`
-- **not_equals** → `table.c.prop_name != value`
-- **starts_with** → `table.c.prop_name.startswith(value)`
-- **fuzzy_match** → `func.similarity(table.c.prop_name, value) > threshold`
+- **exact_match** → `table.c.prop__name == value`
+- **not_equals** → `table.c.prop__name != value`
+- **starts_with** → `table.c.prop__name.startswith(value)`
+- **fuzzy_match** → `func.similarity(table.c.prop__name, value) > threshold`
   (with pg_trgm)
-- **phonetic_match** → `func.soundex(table.c.prop_name) == func.soundex(value)`
+- **phonetic_match** → `func.soundex(table.c.prop__name) == func.soundex(value)`
   (with fuzzystrmatch)
-- **numeric comparisons** → `table.c.prop_name_numeric > value`
-- **date comparisons** → `table.c.prop_name_date > value`
-- **date_range** → `table.c.prop_name_date.between(start, end)`
-- **is_empty** → `or_(table.c.prop_name == None, table.c.prop_name == '')`
+- **numeric comparisons** → `table.c.prop__name__numeric > value`
+- **date comparisons** → `table.c.prop__name__date > value`
+- **date_range** → `table.c.prop__name__date.between(start, end)`
+- **is_empty** → `or_(table.c.prop__name == None, table.c.prop__name == '')`
 
 Cross-relationship queries become SQLAlchemy JOINs:
 
@@ -278,8 +278,8 @@ query = (
     select(patient.c.case_id, patient.c.case_name)
     .join(household, patient.c.parent_id == household.c.case_id)
     .where(and_(
-        household.c.prop_district == 'Kamuli',
-        patient.c.prop_dob_date > date(2020, 1, 1),
+        household.c.prop__district == 'Kamuli',
+        patient.c.prop__dob__date > date(2020, 1, 1),
     ))
 )
 ```
