@@ -53,6 +53,15 @@ Maintain `log.md` as an append-only log of significant activity: decisions, conc
 
 Author format examples: `Martin (UTC-6)`, `Claude - Martin's session`, `Claude - Ana's session`
 
+### Open Questions
+
+Maintain `open_questions.md` as the single source of truth for all open questions and uncompleted to-dos. It supersedes "Open Questions" sections in individual design documents.
+
+- Read `open_questions.md` at the start of each session alongside `log.md`
+- Capture new questions throughout the session as they surface in conversation or code
+- Always prompt before pushing: "Do you have any open questions or to-dos from this session to capture?"
+- When a question is resolved, move it to the Resolved section and update any affected documents
+
 ### Conflicts
 
 If you notice conflicting assumptions, decisions, or designs across documents or log entries, flag them explicitly rather than silently picking one interpretation.
@@ -85,5 +94,5 @@ Follow the style of existing documents:
 - Plain markdown
 - Tables for component/field catalogs
 - JSON for filter spec examples
-- "Open Questions" sections for unresolved design decisions
+- "Open Questions" sections in design docs should cross-reference `open_questions.md` rather than maintain their own independent lists
 - "Out of Scope" sections to bound the work
