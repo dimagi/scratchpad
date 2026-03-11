@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Case Search Endpoint — UI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<style>
+  :root {
+    --cc-primary: #5D70D2;
+    --cc-primary-hover: #4a5bb8;
+    --cc-primary-dim: rgba(93, 112, 210, 0.08);
+    --cc-success: #358623;
+    --cc-success-dim: rgba(53, 134, 35, 0.06);
+    --cc-danger: #E13019;
+    --cc-info: #01A2A9;
+    --cc-warning: #FEAF31;
+    --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
+
+    /* Nesting depth colors */
+    --depth-0: #6C757D;
+    --depth-1: #6C757D;
+    --depth-2: #6C757D;
+
+    /* Field type icons — all use secondary/neutral gray per style guide */
+    --type-text: #6C757D;
+    --type-number: #6C757D;
+    --type-date: #6C757D;
+    --type-datetime: #6C757D;
+    --type-geo: #6C757D;
+  }
+
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: #f2f2f1; }
+
+  /* ── Top navbar ── */
+  .hq-topnav {
+    background: linear-gradient(#fdfdfd, #f4f4f4);
+    border-bottom: 1px solid #d5d5d5;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .hq-brand {
+    font-size: 15px;
+    font-weight: 700;
+    color: #004ebc;
+    letter-spacing: -0.02em;
+    padding: 0 16px 0 0;
+    border-right: 1px solid #d5d5d5;
+    line-height: 50px;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .hq-brand:hover { color: #003896; text-decoration: none; }
+  .hq-topnav-links {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-left: 8px;
+  }
+  .hq-topnav-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: #444;
+    padding: 0 14px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .hq-topnav-link:hover { color: #004ebc; border-bottom-color: #004ebc; }
+  .hq-topnav-link.active { color: #004ebc; border-bottom-color: #004ebc; font-weight: 600; }
+
+  /* ── Sidebar ── */
+  #hq-sidebar {
+    background: #f8f8f7;
+    border-right: 1px solid #e0e0de;
+    min-height: calc(100vh - 50px);
+    padding: 12px 0;
+  }
+  .sidebar-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9e9e9e;
+    padding: 12px 16px 4px;
+  }
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: #3c3c3c;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background 0.1s, color 0.1s;
+  }
+  .sidebar-link:hover { background: #f5f5f4; color: #1c2126; }
+  .sidebar-link.active {
+    background: var(--cc-primary-dim);
+    color: var(--cc-primary);
+    border-left-color: var(--cc-primary);
+    font-weight: 600;
+  }
+  .sidebar-link i { width: 16px; text-align: center; font-size: 12px; color: inherit; }
+
+  /* ── Content area ── */
+  #hq-content { padding: 0 0 32px; background: #ffffff; }
+
+  /* ── Breadcrumbs ── */
+  .hq-breadcrumbs {
+    font-size: 12px;
+    color: #685c53;
+    padding: 10px 20px 6px;
+    border-bottom: 1px solid #e8e8e6;
+    background: #fff;
+  }
+  .hq-breadcrumbs a { color: var(--cc-primary); text-decoration: none; }
+  .hq-breadcrumbs a:hover { text-decoration: underline; }
+  .hq-breadcrumbs .sep { margin: 0 5px; color: #bbb; }
+  .hq-breadcrumbs .current { color: #1c2126; font-weight: 500; }
+
+  /* ── Page header ── */
+  .hq-page-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #e8e8e6;
+    background: #fff;
+    margin-bottom: 20px;
+  }
+  .hq-page-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: #1c2126;
+  }
+
+  /* ── Main content inner ── */
+  .hq-content-inner { padding: 0 20px; }
+
+  /* ── Bootstrap overrides for CommCare look ── */
+  .btn-primary {
+    background: var(--cc-primary);
+    border-color: var(--cc-primary);
+  }
+  .btn-primary:hover, .btn-primary:focus {
+    background: var(--cc-primary-hover);
+    border-color: var(--cc-primary-hover);
+  }
+  .btn-success {
+    background: var(--cc-success);
+    border-color: var(--cc-success);
+  }
+  .btn-success:hover { background: #2d7320; border-color: #2d7320; }
+  .btn-outline-secondary { color: #685c53; border-color: #d6d6d4; }
+  .btn-outline-secondary:hover { background: #f2f2f1; color: #1c2126; border-color: #c0c0be; }
+
+  .form-control:focus, .form-select:focus {
+    border-color: var(--cc-primary);
+    box-shadow: 0 0 0 0.2rem rgba(93, 112, 210, 0.15);
+  }
+
+  .card {
+    border-color: #d6d6d4;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+  .card-header {
+    background: #f8f8f7;
+    border-bottom-color: #d6d6d4;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1c2126;
+    padding: 10px 16px;
+  }
+  .card-header i { color: var(--cc-primary); margin-right: 6px; font-size: 13px; }
+  .card-body { padding: 16px; }
+
+  /* ── Endpoint metadata form ── */
+  .form-label { font-size: 13px; font-weight: 600; color: #3c3c3c; margin-bottom: 4px; }
+  .form-control, .form-select {
+    font-size: 13px;
+    border-color: #d6d6d4;
+  }
+
+  /* ── Parameter rows ── */
+  .param-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+  }
+  .param-row + .param-row {
+    border-top: 1px solid #ededeb;
+  }
+  .param-type-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .param-type-icon--text    { background: var(--type-text); }
+  .param-type-icon--number  { background: var(--type-number); }
+  .param-type-icon--date    { background: var(--type-date); }
+  .param-name-input {
+    font-size: 13px;
+    flex: 1;
+    border: 1px solid #d6d6d4;
+    border-radius: 4px;
+    padding: 4px 10px;
+    background: #fff;
+    color: #1c2126;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .param-name-input:focus {
+    outline: none;
+    border-color: var(--cc-primary);
+    box-shadow: 0 0 0 3px rgba(93, 112, 210, 0.12);
+  }
+  .param-type-select {
+    font-size: 12px;
+    border: 1px solid #d6d6d4;
+    border-radius: 4px;
+    padding: 4px 28px 4px 8px;
+    background: #fff;
+    color: #1c2126;
+    min-width: 90px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239e9e9e'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    cursor: pointer;
+  }
+  .param-type-select:focus {
+    outline: none;
+    border-color: var(--cc-primary);
+    box-shadow: 0 0 0 3px rgba(93, 112, 210, 0.12);
+  }
+  .param-required-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #685c53;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  .param-required-toggle input[type="checkbox"] {
+    cursor: pointer;
+  }
+  .param-required-toggle .form-check-input:checked {
+    background-color: var(--cc-primary);
+    border-color: var(--cc-primary);
+  }
+  .param-required-toggle .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(93, 112, 210, 0.25);
+  }
+  .param-delete-btn {
+    background: none;
+    border: none;
+    color: #c0c0be;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .param-delete-btn:hover { color: var(--cc-danger); background: rgba(225,48,25,0.06); }
+
+  /* ── Filter tree ── */
+  .filter-tree { font-size: 13px; }
+
+  .group-node {
+    position: relative;
+    padding-left: 20px;
+  }
+  .group-node::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 36px;
+    bottom: 12px;
+    width: 2px;
+    border-radius: 1px;
+  }
+  .group-node[data-depth="0"]::before { background: var(--depth-0); opacity: 0.25; }
+  .group-node[data-depth="1"]::before { background: var(--depth-1); opacity: 0.25; }
+
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    margin-left: -20px;
+    position: relative;
+  }
+  .group-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: #6C757D;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .group-operator-toggle {
+    display: inline-flex;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #d6d6d4;
+  }
+  .group-operator-toggle button {
+    padding: 3px 12px;
+    border: none;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    background: #f8f8f7;
+    color: #9e9e9e;
+    transition: background 0.12s, color 0.12s;
+  }
+  .group-operator-toggle button.active {
+    background: var(--cc-primary);
+    color: white;
+  }
+  .group-operator-toggle button:not(.active):hover {
+    background: var(--cc-primary-dim);
+    color: var(--cc-primary);
+  }
+  .group-label {
+    font-size: 12px;
+    color: #685c53;
+    font-style: italic;
+  }
+  .group-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+  }
+  .group-actions button {
+    background: none;
+    border: none;
+    color: #c0c0be;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+  .group-actions button:hover { color: var(--cc-danger); background: rgba(225,48,25,0.06); }
+
+  .group-children { padding: 4px 0 8px 0; }
+
+  /* ── Condition row ── */
+  .condition-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    position: relative;
+  }
+  .condition-row::before {
+    content: '';
+    position: absolute;
+    left: -13px;
+    top: 50%;
+    width: 10px;
+    height: 2px;
+    border-radius: 1px;
+  }
+  .group-node[data-depth="0"] > .group-children > .condition-row::before {
+    background: var(--depth-0);
+    opacity: 0.25;
+  }
+  .group-node[data-depth="1"] > .group-children > .condition-row::before {
+    background: var(--depth-1);
+    opacity: 0.25;
+  }
+  .cond-type-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .field-select, .op-select {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 26px 4px 8px;
+    border: 1px solid #d6d6d4;
+    border-radius: 4px;
+    background: #fff;
+    color: #1c2126;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239e9e9e'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .field-select { min-width: 120px; }
+  .op-select { min-width: 110px; }
+
+  /* Value input group */
+  .value-input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid #d6d6d4;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+    flex: 1;
+    min-width: 0;
+  }
+  .value-source-toggle {
+    display: flex;
+    background: #f8f8f7;
+    border-right: 1px solid #ededeb;
+    flex-shrink: 0;
+  }
+  .value-source-btn {
+    padding: 5px 7px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 11px;
+    color: #9e9e9e;
+    transition: color 0.12s, background 0.12s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .value-source-btn.active {
+    color: var(--cc-primary);
+    background: var(--cc-primary-dim);
+  }
+  .value-source-btn:not(.active):hover { color: #1c2126; }
+  .value-field {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    color: #1c2126;
+    min-width: 80px;
+    outline: none;
+    flex: 1;
+  }
+  .value-field::placeholder { color: #c0c0be; }
+  .value-ref-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    margin: 2px 4px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .value-ref-badge--param {
+    background: var(--cc-primary-dim);
+    color: var(--cc-primary);
+    border: 1px solid rgba(93, 112, 210, 0.2);
+  }
+  .value-ref-badge--auto {
+    background: var(--cc-success-dim);
+    color: var(--cc-success);
+    border: 1px solid rgba(53, 134, 35, 0.15);
+  }
+  .value-ref-badge i { font-size: 9px; }
+
+  .cond-delete-btn {
+    background: none;
+    border: none;
+    color: #c0c0be;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .cond-delete-btn:hover { color: var(--cc-danger); background: rgba(225,48,25,0.06); }
+
+  /* Add buttons row at bottom of group */
+  .group-add-bar {
+    display: flex;
+    gap: 8px;
+    padding: 4px 0 0;
+    position: relative;
+  }
+  .group-add-bar::before {
+    content: '';
+    position: absolute;
+    left: -13px;
+    top: 50%;
+    width: 10px;
+    height: 2px;
+    border-radius: 1px;
+    opacity: 0.15;
+    background: var(--depth-0);
+  }
+  .group-node[data-depth="1"] > .group-children > .group-add-bar::before {
+    background: var(--depth-1);
+  }
+
+  .btn-add-cond {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+    background: var(--cc-primary);
+    color: white;
+  }
+  .btn-add-cond:hover { background: var(--cc-primary-hover); }
+  .btn-add-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px dashed #d6d6d4;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    background: transparent;
+    color: var(--cc-primary);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-add-group:hover { border-color: var(--cc-primary); background: var(--cc-primary-dim); }
+
+  /* ── Mockup badge ── */
+  .mockup-badge {
+    position: fixed;
+    top: 58px;
+    right: 16px;
+    background: var(--cc-warning);
+    color: #573b00;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    z-index: 200;
+  }
+</style>
+</head>
+<body>
+
+<div class="mockup-badge">UI Mockup</div>
+
+<!-- ── Top nav ── -->
+<nav class="hq-topnav">
+  <a class="hq-brand" href="#">CommCare HQ</a>
+  <div class="hq-topnav-links">
+    <a class="hq-topnav-link" href="#">Exchange</a>
+    <a class="hq-topnav-link" href="#">Applications</a>
+    <a class="hq-topnav-link active" href="#">Data</a>
+    <a class="hq-topnav-link" href="#">Reports</a>
+    <a class="hq-topnav-link" href="#">Users</a>
+    <a class="hq-topnav-link" href="#">Messaging</a>
+    <a class="hq-topnav-link" href="#">Settings</a>
+  </div>
+</nav>
+
+<!-- ── Two-column layout ── -->
+<div class="container-fluid p-0">
+  <div class="row g-0">
+
+    <!-- ── Sidebar ── -->
+    <div id="hq-sidebar" class="col-2">
+      <div class="sidebar-section-title">Export Data</div>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-file-export"></i> Export Case Data</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-file-export"></i> Export Form Data</a>
+
+      <div class="sidebar-section-title">Project Data</div>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-database"></i> Case Groups</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-code"></i> Data Dictionary</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-table-columns"></i> Lookup Tables</a>
+      <a class="sidebar-link active" href="endpoint-list-mockup.html"><i class="fa-solid fa-magnifying-glass"></i> Case Search Endpoints</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-globe"></i> Integrations</a>
+
+      <div class="sidebar-section-title">Fixtures</div>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-wrench"></i> Manage Fixtures</a>
+    </div>
+
+    <!-- ── Main content ── -->
+    <div id="hq-content" class="col-10">
+      <div class="hq-breadcrumbs">
+        <a href="#">Data</a>
+        <span class="sep">&rsaquo;</span>
+        <a href="endpoint-list-mockup.html">Case Search Endpoints</a>
+        <span class="sep">&rsaquo;</span>
+        <span class="current">Edit Endpoint</span>
+      </div>
+
+      <div class="hq-page-header">
+        <h1>Edit Case Search Endpoint</h1>
+      </div>
+
+      <div class="hq-content-inner">
+
+        <!-- ── Endpoint metadata ── -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="fa-solid fa-circle-info"></i>Endpoint Details
+          </div>
+          <div class="card-body">
+            <div id="readonly-banner" class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" style="display:none!important;">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <span>You are viewing a historical version. Switch to <strong>v2 (current)</strong> to make changes.</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-2">
+                <label class="form-label">Version</label>
+                <select class="form-select" id="version-select" onchange="onVersionChange(this.value)">
+                  <option value="v2" selected>v2 (current)</option>
+                  <option value="v1">v1</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-control editable-field" value="Provincial Case Lookup" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Target Type</label>
+                <select class="form-select editable-field">
+                  <option selected>Project DB</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Case Type</label>
+                <select class="form-select editable-field">
+                  <option>household_member</option>
+                  <option selected>patient</option>
+                  <option>referral</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Parameters panel ── -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="fa-solid fa-sliders"></i>Endpoint Parameters
+          </div>
+          <div class="card-body">
+            <!-- Parameter rows -->
+            <div class="param-row">
+              <div class="param-type-icon param-type-icon--text">
+                <i class="fa-solid fa-font"></i>
+              </div>
+              <input type="text" class="param-name-input" value="search_province" placeholder="Parameter name" />
+              <select class="param-type-select">
+                <option selected>text</option>
+                <option>number</option>
+                <option>date</option>
+              </select>
+              <label class="param-required-toggle form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" checked />
+                <span class="form-check-label">Required</span>
+              </label>
+              <button class="param-delete-btn" title="Remove">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+            <div class="param-row">
+              <div class="param-type-icon param-type-icon--number">
+                <i class="fa-solid fa-hashtag"></i>
+              </div>
+              <input type="text" class="param-name-input" value="min_age" placeholder="Parameter name" />
+              <select class="param-type-select">
+                <option>text</option>
+                <option selected>number</option>
+                <option>date</option>
+              </select>
+              <label class="param-required-toggle form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" />
+                <span class="form-check-label">Required</span>
+              </label>
+              <button class="param-delete-btn" title="Remove">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+            <div class="param-row">
+              <div class="param-type-icon param-type-icon--date">
+                <i class="fa-solid fa-calendar"></i>
+              </div>
+              <input type="text" class="param-name-input" value="cutoff_date" placeholder="Parameter name" />
+              <select class="param-type-select">
+                <option>text</option>
+                <option>number</option>
+                <option selected>date</option>
+              </select>
+              <label class="param-required-toggle form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" />
+                <span class="form-check-label">Required</span>
+              </label>
+              <button class="param-delete-btn" title="Remove">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+            <!-- Add parameter -->
+            <div style="margin-top: 10px;">
+              <button class="btn-add-cond">
+                <i class="fa-solid fa-plus"></i> Add Parameter
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Filter tree panel ── -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="fa-solid fa-filter"></i>Server-Side Filters
+          </div>
+          <div class="card-body">
+            <div class="filter-tree">
+
+              <!-- Root AND group -->
+              <div class="group-node" data-depth="0">
+                <div class="group-header">
+                  <div class="group-icon">
+                    <i class="fa-solid fa-code-branch"></i>
+                  </div>
+                  <div class="group-operator-toggle">
+                    <button class="active">AND</button>
+                    <button>OR</button>
+                  </div>
+                  <span class="group-label">match all of the following</span>
+                  <div class="group-actions">
+                    <button title="Remove group"><i class="fa-solid fa-trash-can"></i></button>
+                  </div>
+                </div>
+
+                <div class="group-children">
+
+                  <!-- Condition 1: province = param:search_province -->
+                  <div class="condition-row">
+                    <div class="cond-type-icon" style="background: var(--type-text);">
+                      <i class="fa-solid fa-font"></i>
+                    </div>
+                    <select class="field-select">
+                      <option selected>province</option>
+                      <option>age</option>
+                      <option>status</option>
+                      <option>last_modified</option>
+                    </select>
+                    <select class="op-select">
+                      <option selected>exact match</option>
+                      <option>contains</option>
+                      <option>is empty</option>
+                    </select>
+                    <div class="value-input-group">
+                      <div class="value-source-toggle">
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                        <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                      </div>
+                      <span class="value-ref-badge value-ref-badge--param">
+                        <i class="fa-solid fa-cube"></i> search_province
+                      </span>
+                    </div>
+                    <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                  </div>
+
+                  <!-- Condition 2: age >= param:min_age -->
+                  <div class="condition-row">
+                    <div class="cond-type-icon" style="background: var(--type-number);">
+                      <i class="fa-solid fa-hashtag"></i>
+                    </div>
+                    <select class="field-select">
+                      <option>province</option>
+                      <option selected>age</option>
+                      <option>status</option>
+                      <option>last_modified</option>
+                    </select>
+                    <select class="op-select">
+                      <option>&gt; (gt)</option>
+                      <option selected>&ge; (gte)</option>
+                      <option>&lt; (lt)</option>
+                      <option>&le; (lte)</option>
+                    </select>
+                    <div class="value-input-group">
+                      <div class="value-source-toggle">
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                        <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                      </div>
+                      <span class="value-ref-badge value-ref-badge--param">
+                        <i class="fa-solid fa-cube"></i> min_age
+                      </span>
+                    </div>
+                    <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                  </div>
+
+                  <!-- Nested OR group -->
+                  <div class="group-node" data-depth="1">
+                    <div class="group-header">
+                      <div class="group-icon" style="background: var(--depth-1);">
+                        <i class="fa-solid fa-code-branch"></i>
+                      </div>
+                      <div class="group-operator-toggle">
+                        <button>AND</button>
+                        <button class="active">OR</button>
+                      </div>
+                      <span class="group-label">match any of the following</span>
+                      <div class="group-actions">
+                        <button title="Remove group"><i class="fa-solid fa-trash-can"></i></button>
+                      </div>
+                    </div>
+
+                    <div class="group-children">
+
+                      <!-- OR child 1: status = "active" (constant) -->
+                      <div class="condition-row">
+                        <div class="cond-type-icon" style="background: var(--type-text);">
+                          <i class="fa-solid fa-font"></i>
+                        </div>
+                        <select class="field-select">
+                          <option>province</option>
+                          <option>age</option>
+                          <option selected>status</option>
+                          <option>last_modified</option>
+                        </select>
+                        <select class="op-select">
+                          <option selected>exact match</option>
+                          <option>contains</option>
+                          <option>is empty</option>
+                        </select>
+                        <div class="value-input-group">
+                          <div class="value-source-toggle">
+                            <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                          </div>
+                          <input type="text" class="value-field" value="active" placeholder="value…" />
+                        </div>
+                        <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                      </div>
+
+                      <!-- OR child 2: last_modified after auto:today() -->
+                      <div class="condition-row">
+                        <div class="cond-type-icon" style="background: var(--type-datetime);">
+                          <i class="fa-solid fa-calendar"></i>
+                        </div>
+                        <select class="field-select">
+                          <option>province</option>
+                          <option>age</option>
+                          <option>status</option>
+                          <option selected>last_modified</option>
+                        </select>
+                        <select class="op-select">
+                          <option selected>after</option>
+                          <option>before</option>
+                          <option>on</option>
+                        </select>
+                        <div class="value-input-group">
+                          <div class="value-source-toggle">
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                            <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                          </div>
+                          <span class="value-ref-badge value-ref-badge--auto">
+                            <i class="fa-solid fa-bolt"></i> today()
+                          </span>
+                        </div>
+                        <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                      </div>
+
+                      <div class="group-add-bar">
+                        <button class="btn-add-cond">
+                          <i class="fa-solid fa-plus"></i> Add Condition
+                        </button>
+                        <button class="btn-add-group">
+                          <i class="fa-solid fa-code-branch"></i> Add Group
+                        </button>
+                      </div>
+                    </div>
+                  </div><!-- /nested OR group -->
+
+                  <!-- Root group add bar -->
+                  <div class="group-add-bar">
+                    <button class="btn-add-cond">
+                      <i class="fa-solid fa-plus"></i> Add Condition
+                    </button>
+                    <button class="btn-add-group">
+                      <i class="fa-solid fa-code-branch"></i> Add Group
+                    </button>
+                  </div>
+
+                </div><!-- /root group children -->
+              </div><!-- /root group-node -->
+
+            </div><!-- /filter-tree -->
+          </div><!-- /card-body -->
+        </div><!-- /filter card -->
+
+        <!-- ── Action buttons ── -->
+        <div class="d-flex gap-2 mt-3" id="action-buttons">
+          <button class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-floppy-disk me-1"></i> Create New Version (v3)
+          </button>
+          <a href="endpoint-list-mockup.html" class="btn btn-outline-secondary btn-sm">
+            Cancel
+          </a>
+        </div>
+
+      </div><!-- /hq-content-inner -->
+    </div><!-- /hq-content -->
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el, { trigger: 'hover' });
+  });
+
+  function onVersionChange(version) {
+    const readonly = version !== 'v2';
+    // Banner
+    document.getElementById('readonly-banner').style.display = readonly ? 'flex' : 'none';
+    // Disable all editable fields
+    document.querySelectorAll('.editable-field, .param-name-input, .param-type-select, .form-check-input, .field-select, .op-select, .value-source-btn, .value-field, .btn-add-cond, .btn-add-group, .group-actions button, .group-operator-toggle button, .param-delete-btn, .cond-delete-btn').forEach(el => {
+      el.disabled = readonly;
+      el.style.pointerEvents = readonly ? 'none' : '';
+      el.style.opacity = readonly ? '0.5' : '';
+    });
+    // Disable the create button
+    const createBtn = document.querySelector('#action-buttons .btn-primary');
+    createBtn.disabled = readonly;
+    createBtn.style.opacity = readonly ? '0.5' : '';
+  }
+</script>
+</body>
+</html>

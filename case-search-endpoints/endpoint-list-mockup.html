@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case Search Endpoints — UI Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+<style>
+  body { font-family: 'DM Sans', system-ui, sans-serif; background: #f2f2f1; }
+
+  /* ── Top navbar ── */
+  .hq-topnav {
+    background: linear-gradient(#fdfdfd, #f4f4f4);
+    border-bottom: 1px solid #d5d5d5;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .hq-brand {
+    font-size: 15px;
+    font-weight: 700;
+    color: #004ebc;
+    letter-spacing: -0.02em;
+    padding: 0 16px 0 0;
+    border-right: 1px solid #d5d5d5;
+    line-height: 50px;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .hq-brand:hover { color: #003896; text-decoration: none; }
+  .hq-topnav-links {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-left: 8px;
+  }
+  .hq-topnav-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: #444;
+    padding: 0 14px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .hq-topnav-link:hover { color: #004ebc; border-bottom-color: #004ebc; }
+  .hq-topnav-link.active { color: #004ebc; border-bottom-color: #004ebc; font-weight: 600; }
+
+  /* ── Sidebar ── */
+  #hq-sidebar {
+    background: #f8f8f7;
+    border-right: 1px solid #e0e0de;
+    min-height: calc(100vh - 50px);
+    padding: 12px 0;
+  }
+  .sidebar-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9e9e9e;
+    padding: 12px 16px 4px;
+  }
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: #3c3c3c;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background 0.1s, color 0.1s;
+  }
+  .sidebar-link:hover { background: #f5f5f4; color: #1c2126; }
+  .sidebar-link.active {
+    background: rgba(93, 112, 210, 0.06);
+    color: #5D70D2;
+    border-left-color: #5D70D2;
+    font-weight: 600;
+  }
+  .sidebar-link i { width: 16px; text-align: center; font-size: 12px; color: inherit; }
+
+  /* ── Content area ── */
+  #hq-content { padding: 0 0 32px; background: #ffffff; }
+
+  /* ── Breadcrumbs ── */
+  .hq-breadcrumbs {
+    font-size: 12px;
+    color: #685c53;
+    padding: 10px 20px 6px;
+    border-bottom: 1px solid #e8e8e6;
+    background: #fff;
+  }
+  .hq-breadcrumbs a { color: #5D70D2; text-decoration: none; }
+  .hq-breadcrumbs a:hover { text-decoration: underline; }
+  .hq-breadcrumbs .sep { margin: 0 5px; color: #bbb; }
+  .hq-breadcrumbs .current { color: #1c2126; font-weight: 500; }
+
+  /* ── Page header ── */
+  .hq-page-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #e8e8e6;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .hq-page-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: #1c2126;
+  }
+
+  /* ── Main content inner ── */
+  .hq-content-inner { padding: 0 20px; }
+
+  /* ── Table ── */
+  .table { font-size: 13px; }
+  .table thead th {
+    font-weight: 600;
+    color: #1c2126;
+    border-bottom: 2px solid #d6d6d4;
+    padding: 10px 12px;
+    white-space: nowrap;
+  }
+  .table tbody td {
+    padding: 10px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #ededeb;
+    color: #1c2126;
+  }
+  .table tbody tr { cursor: pointer; }
+  .table tbody tr:hover { background: rgba(93, 112, 210, 0.04); }
+
+  .table-icon-btn {
+    background: none;
+    border: none;
+    color: #c0c0be;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: color 0.1s, background 0.1s;
+  }
+  .table-icon-btn:hover { color: #E13019; background: rgba(225, 48, 25, 0.06); }
+
+  .version-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(93, 112, 210, 0.08);
+    color: #5D70D2;
+    border: 1px solid rgba(93, 112, 210, 0.2);
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+  .target-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    background: #f2f2f1;
+    border: 1px solid #d6d6d4;
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: #3c3c3c;
+  }
+  .target-badge i { color: #9e9e9e; font-size: 10px; }
+
+  .btn-primary {
+    --bs-btn-bg: #5D70D2;
+    --bs-btn-border-color: #5D70D2;
+    --bs-btn-hover-bg: #4a5bb8;
+    --bs-btn-hover-border-color: #4a5bb8;
+    --bs-btn-active-bg: #4a5bb8;
+    --bs-btn-active-border-color: #4a5bb8;
+    font-weight: 600;
+  }
+
+  /* ── Mockup badge ── */
+  .mockup-badge {
+    position: fixed;
+    top: 58px;
+    right: 16px;
+    background: #FEAF31;
+    color: #573b00;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    z-index: 200;
+  }
+</style>
+</head>
+<body>
+
+<div class="mockup-badge">UI Mockup</div>
+
+<!-- ── Top nav ── -->
+<nav class="hq-topnav">
+  <a class="hq-brand" href="#">CommCare HQ</a>
+  <div class="hq-topnav-links">
+    <a class="hq-topnav-link" href="#">Exchange</a>
+    <a class="hq-topnav-link" href="#">Applications</a>
+    <a class="hq-topnav-link active" href="#">Data</a>
+    <a class="hq-topnav-link" href="#">Reports</a>
+    <a class="hq-topnav-link" href="#">Users</a>
+    <a class="hq-topnav-link" href="#">Messaging</a>
+    <a class="hq-topnav-link" href="#">Settings</a>
+  </div>
+</nav>
+
+<!-- ── Two-column layout ── -->
+<div class="container-fluid p-0">
+  <div class="row g-0">
+
+    <!-- ── Sidebar ── -->
+    <div id="hq-sidebar" class="col-2">
+      <div class="sidebar-section-title">Export Data</div>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-file-export"></i> Export Case Data</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-file-export"></i> Export Form Data</a>
+
+      <div class="sidebar-section-title">Project Data</div>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-database"></i> Case Groups</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-code"></i> Data Dictionary</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-table-columns"></i> Lookup Tables</a>
+      <a class="sidebar-link active" href="#"><i class="fa-solid fa-magnifying-glass"></i> Case Search Endpoints</a>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-globe"></i> Integrations</a>
+
+      <div class="sidebar-section-title">Fixtures</div>
+      <a class="sidebar-link" href="#"><i class="fa-solid fa-wrench"></i> Manage Fixtures</a>
+    </div>
+
+    <!-- ── Main content ── -->
+    <div id="hq-content" class="col-10">
+      <div class="hq-breadcrumbs">
+        <a href="#">Data</a>
+        <span class="sep">&rsaquo;</span>
+        <span class="current">Case Search Endpoints</span>
+      </div>
+
+      <div class="hq-page-header">
+        <h1>Case Search Endpoints</h1>
+        <a href="endpoint-new-mockup.html" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-plus me-1"></i> New Endpoint
+        </a>
+      </div>
+
+      <div class="hq-content-inner">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Target</th>
+              <th>Current Version</th>
+              <th>Created</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="location.href='endpoint-edit-mockup.html'">
+              <td>Provincial Case Lookup</td>
+              <td><span class="target-badge"><i class="fa-solid fa-database"></i> project_db: patient</span></td>
+              <td><span class="version-badge">v3</span></td>
+              <td>Feb 14, 2026</td>
+              <td>
+                <form onsubmit="return confirm('Deactivate this endpoint?')" onclick="event.stopPropagation()">
+                  <button type="submit" class="table-icon-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Deactivate">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            <tr onclick="location.href='endpoint-edit-mockup.html'">
+              <td>High-Risk Patients</td>
+              <td><span class="target-badge"><i class="fa-solid fa-database"></i> project_db: patient</span></td>
+              <td><span class="version-badge">v1</span></td>
+              <td>Jan 30, 2026</td>
+              <td>
+                <form onsubmit="return confirm('Deactivate this endpoint?')" onclick="event.stopPropagation()">
+                  <button type="submit" class="table-icon-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Deactivate">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            <tr onclick="location.href='endpoint-edit-mockup.html'">
+              <td>Active Household Members</td>
+              <td><span class="target-badge"><i class="fa-solid fa-database"></i> project_db: household_member</span></td>
+              <td><span class="version-badge">v2</span></td>
+              <td>Jan 8, 2026</td>
+              <td>
+                <form onsubmit="return confirm('Deactivate this endpoint?')" onclick="event.stopPropagation()">
+                  <button type="submit" class="table-icon-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Deactivate">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el, { trigger: 'hover' });
+  });
+</script>
+</body>
+</html>
