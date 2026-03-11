@@ -192,3 +192,30 @@ Created `open-questions` skill and `open_questions.md`; updated `CLAUDE.md` to r
 - **`CLAUDE.md` updated**: Added Open Questions section to Collaboration instructions; updated Document Conventions to note that design doc "Open Questions" sections should cross-reference `open_questions.md`.
 
 **Noted from remote pull**: `project_db_design.md` updated — column naming convention changed from single underscore (`prop_name`, `prop_name_date`) to double underscore (`prop__name`, `prop__name__date`) as separator between namespace and property name.
+## 2026-03-11 01:30 UTC — Claude - Martin's session (UTC-6)
+
+Completed initial implementation of the query builder and case search endpoints feature on branch `riese/query_builder_claude`. All 9 tasks from the implementation plan executed across multiple sessions.
+
+**Commits on branch** (chronological):
+1. Feature flag (`CASE_SEARCH_ENDPOINTS` StaticToggle)
+2. Data models (`CaseSearchEndpoint`, `CaseSearchEndpointVersion`) + migration + migrations.lock
+3. Service layer (`endpoint_service.py`) with validation, domain dump/deletion registration
+4. Capability builder (`endpoint_capability.py`) — reads data dictionary, produces field/operation/component metadata
+5. Views + URL configuration (list, create, edit, version, deactivate, capability API)
+6. Navigation menu entry in `ProjectDataTab`
+7. List template (`endpoint_list.html`)
+8. Edit template (`endpoint_edit.html`) with Alpine.js component
+9. Query builder partial (`query_builder.html`, `_filter_group.html`, `_filter_row.html`)
+10. Bug fix commit: Alpine.js initialization, `json_script` double-encoding, auto_value filtering by field type
+
+**Key implementation patterns discovered**:
+- Alpine.js requires a `{% js_entry %}` tag pointing to a webpack-bundled JS file that imports Alpine and calls `Alpine.start()` — not available globally
+- `Alpine.data()` component definitions must be in the JS entry file, not inline `<script>` blocks
+- Django `{% include %}` recursion causes Python `RecursionError` — solved by inlining one extra nesting level + extracting shared `_filter_row.html`
+- Django `json_script` double-encodes when given string defaults (e.g., `default:"[]"`) — pass actual Python objects from views instead
+- Alpine `x-model` on `<select>` doesn't auto-sync with visually displayed first option — must initialize model value explicitly
+- Nested `x-data` with object references: mutate in place (set `.type`, `.children`) rather than reassigning, to preserve child scope bindings
+- `WebUser` is CouchDB-backed — tests must use `client.login(username, password)`, not `force_login`
+- Views with URL kwargs beyond `domain` must override `page_url` property
+
+**Tests**: `test_endpoint_models.py`, `test_endpoint_service.py`, `test_endpoint_capability.py`, `test_views.py` (including round-trip tests)

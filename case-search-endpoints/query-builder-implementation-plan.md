@@ -2142,6 +2142,37 @@ git commit -m "feat: add standalone query builder Alpine.js partial"
 
 ---
 
+## Task 10: Navigation Menu
+
+**Files:**
+- Modify: `corehq/tabs/tabclasses.py`
+
+**Step 1: Add import and menu entry**
+
+In `tabclasses.py`, import `CaseSearchEndpointsView` alongside the existing
+`CSQLFixtureExpressionView` import, then add a menu entry guarded by the
+feature flag:
+
+```python
+from corehq.apps.case_search.views import CaseSearchEndpointsView, CSQLFixtureExpressionView
+
+# in the ProjectDataTab.sidebar_items property, after the CSQL_FIXTURE block:
+if toggles.CASE_SEARCH_ENDPOINTS.enabled(self.domain):
+    items.append([_('Case Search Endpoints'), [{
+        'title': _(CaseSearchEndpointsView.page_title),
+        'url': reverse(CaseSearchEndpointsView.urlname, args=[self.domain]),
+    }]])
+```
+
+**Step 2: Commit**
+
+```bash
+git add corehq/tabs/tabclasses.py
+git commit -m "feat: add Case Search Endpoints to project data navigation menu"
+```
+
+---
+
 ## Open Questions (Deferred)
 
 These are flagged in `query_builder_tech_spec.md` and do not block implementation:
@@ -2171,3 +2202,4 @@ These are flagged in `query_builder_tech_spec.md` and do not block implementatio
 | 7 | List template | `endpoint_list.html` |
 | 8 | Edit template (`json_script`) | `endpoint_edit.html` |
 | 9 | Query builder partial (multi-slot) | `partials/query_builder.html`, `partials/_filter_group.html` |
+| 10 | Navigation menu entry | `tabclasses.py` |
