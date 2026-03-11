@@ -182,3 +182,13 @@ Updated `CLAUDE.md` with project goals and process:
 - **Goals section** added (expanding the former "Purpose" section): (1) improve developer skills and AI collaboration, producing learnings and a repeatable process transferable to other codebases; (2) determine feasibility of case search endpoints using project DB tables.
 - **Process section** added: research → design → plan → implement cycle per [Claude Superpowers plugin](https://claude.com/plugins/superpowers); artifacts-first principle; smallest-possible-scope per cycle; applies to both human developers and AI agents.
 - **AI Role section** updated to explicitly require following the process before moving to a later phase.
+
+## 2026-03-11 16:00 UTC — Claude - Woody's session (UTC-6)
+
+Created `open-questions` skill and `open_questions.md`; updated `CLAUDE.md` to reference both:
+
+- **New skill**: `.claude/skills/open-questions/SKILL.md` — instructs agents to capture open questions throughout sessions, prompt developers before pushing, and move resolved questions to the Resolved section while updating affected docs.
+- **New file**: `open_questions.md` — single source of truth for all open questions and to-dos, superseding "Open Questions" sections in individual design docs. Populated by migrating all existing open questions from `project_db_design.md`, `infrastructure_design.md`, `query_builder_tech_spec.md`, and `additional_endpoint_requirements.md`. Includes 5 resolved questions and 5 items already resolved in prior sessions.
+- **`CLAUDE.md` updated**: Added Open Questions section to Collaboration instructions; updated Document Conventions to note that design doc "Open Questions" sections should cross-reference `open_questions.md`.
+
+**Noted from remote pull**: `project_db_design.md` updated — column naming convention changed from single underscore (`prop_name`, `prop_name_date`) to double underscore (`prop__name`, `prop__name__date`) as separator between namespace and property name.
