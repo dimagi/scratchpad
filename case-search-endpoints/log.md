@@ -238,3 +238,23 @@ Completed initial implementation of the query builder and case search endpoints 
 - Views with URL kwargs beyond `domain` must override `page_url` property
 
 **Tests**: `test_endpoint_models.py`, `test_endpoint_service.py`, `test_endpoint_capability.py`, `test_views.py` (including round-trip tests)
+
+## 2026-03-12 22:30 UTC — Claude - Martin's session (UTC-6)
+
+Updated mockups and query builder tech spec to reflect learnings from implementation.
+
+**Mockup changes** (`endpoint-edit-mockup.html`, `endpoint-new-mockup.html`, `endpoint-list-mockup.html`):
+- Replaced custom button styles (`.btn-add-cond`, `.btn-add-group`, `.btn-success`, `.btn-outline-secondary`) with standard Bootstrap 5 classes — reduces custom CSS and aligns with CommCare HQ patterns
+- Added `aria-label` attributes to all icon-only buttons (delete, value source toggles) for accessibility
+- List view: replaced clickable table rows (`onclick`) with explicit "Edit" buttons per row; added "Actions" column header
+- List view: replaced inline `confirm()` with a Bootstrap modal for deactivation confirmation
+- Deleted standalone `query-builder-mockup.html` — the query builder is now embedded directly in the endpoint edit/new mockups, making the standalone version redundant
+
+**Tech spec changes** (`query_builder_tech_spec.md`):
+- Added `views/endpoints.py` to file tree — endpoint views extracted from `views.py` (discovered during implementation that a separate file is cleaner)
+- Added `test_endpoint_views.py` to file tree
+- Documented `CaseSearchEndpointMixin` shared mixin pattern (modelled on `RoleContextMixin`)
+- Documented `_parse_endpoint_post` and `_endpoint_post_response` private helpers
+- Removed separate `CaseSearchEndpointVersionView` — version viewing handled via `?version=<n>` query param on the edit view with read-only mode
+- Updated UI structure diagram: added version selector, value source toggle icons (`"` / `⬡` / `⚡`), required toggle per parameter
+- Added `required` field to parameter JSON schema
