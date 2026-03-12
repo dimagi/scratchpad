@@ -192,6 +192,14 @@ Created `open-questions` skill and `open_questions.md`; updated `CLAUDE.md` to r
 - **`CLAUDE.md` updated**: Added Open Questions section to Collaboration instructions; updated Document Conventions to note that design doc "Open Questions" sections should cross-reference `open_questions.md`.
 
 **Noted from remote pull**: `project_db_design.md` updated — column naming convention changed from single underscore (`prop_name`, `prop_name_date`) to double underscore (`prop__name`, `prop__name__date`) as separator between namespace and property name.
+## 2026-03-12 17:06 UTC — Claude - Woody's session (UTC-6)
+
+Updated `open_questions.md` with additional notes from Woody's manual capture on data freshness and cross-case-type querying:
+
+- **Q1 (data freshness) — UX consideration added**: If async pillows remain the baseline, could staleness be handled at the UX layer rather than the data layer — e.g., a staleness indicator banner or app navigation restrictions preventing immediate return to a results list after form submission?
+- **"Regular vs. materialized views" question expanded**: Reframed as "how should cross-case-type joined data be represented?" with a third option added — no pre-built view, just a JOIN at query time. Eliminates view management and freshness concerns for views, but may have performance implications.
+- **New technical question added**: How should cross-case-type joined structures be defined and managed for app builders? Options: raw SQL scoped to the project DB, a GUI editor, or developer-hardcoded definitions. Query builder is required regardless.
+
 ## 2026-03-12 16:32 UTC — Claude - Woody's session (UTC-6)
 
 Updated `open_questions.md` with data freshness discussion notes from team:
