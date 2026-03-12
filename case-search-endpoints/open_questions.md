@@ -7,6 +7,7 @@ Single source of truth for all open questions and uncompleted to-dos. Supersedes
 ## Requirements Questions
 
 - [ ] **Q:** For the data freshness requirement, which implementation approach should be used — synchronous write to the project DB as part of form submission, or a client/server memory cache merged with endpoint results? | *Raised:* 2026-03-10 | *By:* Woody | *Docs:* `additional_endpoint_requirements.md`
+  - *Discussion 2026-03-12:* In-memory caching ruled out. **Baseline:** async pillow-based updates (eventual consistency) — acknowledged may not fully satisfy the requirement. **Preferred path:** synchronous write, contingent on performance validation (expected to be fast: simple transform, single-row upsert, no related data fetch). **Views:** regular PostgreSQL views preferred over materialized views; regular views reflect updates instantly and materialized views add complexity and constrain synchronous update flexibility. Treat materialized views as a potential optimization only. Pending: performance testing against production-scale data before committing to synchronous write path. Cross-case-type relationship freshness is a separate open question (see below).
 
 ---
 
@@ -17,6 +18,10 @@ Single source of truth for all open questions and uncompleted to-dos. Supersedes
 - [ ] **Q:** `pg_trgm` and `fuzzystrmatch` extensions are not currently installed on any CommCare HQ database. They are required for `fuzzy_match` and `phonetic_match` SQL backend components. Do these need to be added to commcare-cloud Ansible provisioning before launch, or should these components remain ES-only for the initial release? | *Raised:* 2026-03-09 | *By:* Claude - Martin's session | *Docs:* `infrastructure_design.md`, `query_builder_design.md`
 
 - [ ] **Q:** `within_distance` (geo queries) requires PostGIS, which is not currently installed. What is the priority and timeline for enabling this, if at all? | *Raised:* 2026-03-07 | *By:* Claude - Ethan's session | *Docs:* `infrastructure_design.md`, `query_builder_design.md`
+
+- [ ] **Q:** Are regular PostgreSQL views performant enough at scale for the query builder, or will materialized views be required? Regular views reflect updates instantly but may have higher query-time cost; materialized views can be indexed but require a synchronous update strategy. Must be validated via performance testing before the synchronous write path is finalized. | *Raised:* 2026-03-12 | *By:* Woody | *Docs:* `project_db_design.md`, `additional_endpoint_requirements.md`
+
+- [ ] **Q:** How should the data freshness requirement be handled for cross-case-type relationship queries (e.g., a query spanning patient + household tables)? Synchronous write to a single table is straightforward, but freshness across joined tables is more complex. Requires additional design work before this case can be addressed. | *Raised:* 2026-03-12 | *By:* Woody | *Docs:* `additional_endpoint_requirements.md`, `project_db_design.md`
 
 - [ ] **Q:** What is the bootstrapping story for projects with sparse or incomplete data dictionaries? Project DB tables are derived entirely from the data dictionary — projects that lack one will get empty or incomplete schemas. This must be defined before a production rollout. | *Raised:* 2026-03-07 | *By:* Claude - Ethan's session | *Docs:* `project_db_design.md`, `infrastructure_design.md`
 
@@ -37,6 +42,8 @@ Single source of truth for all open questions and uncompleted to-dos. Supersedes
 ---
 
 ## Uncompleted To-Dos
+
+- [ ] **TODO:** Build a management command to populate a project DB for a domain (e.g., BHA) and run performance benchmarks comparing regular views vs. materialized views and async vs. synchronous write paths. UAT and performance spaces have sufficient data for testing. | *Raised:* 2026-03-12 | *By:* Woody | *Source:* data freshness discussion
 
 - [ ] **TODO:** Assess UCR DB (`rds_pgucr0`) sizing and current utilization to determine whether it can support project DB load before launch, or whether a dedicated instance needs to be provisioned. | *Raised:* 2026-03-09 | *By:* Claude - Martin's session | *Source:* `infrastructure_design.md`
 
