@@ -258,3 +258,29 @@ Updated mockups and query builder tech spec to reflect learnings from implementa
 - Removed separate `CaseSearchEndpointVersionView` — version viewing handled via `?version=<n>` query param on the edit view with read-only mode
 - Updated UI structure diagram: added version selector, value source toggle icons (`"` / `⬡` / `⚡`), required toggle per parameter
 - Added `required` field to parameter JSON schema
+
+## 2026-03-12 — Claude - Ethan's session (UTC-5)
+
+Continued project DB work on branch `es/project-db`.
+
+**Refactoring: merged `table_manager.py` into `schema.py`:**
+- Moved `get_project_db_engine`, `create_tables`, and `evolve_table` from `table_manager.py` into `schema.py`
+- Deleted `table_manager.py`, updated all imports across test files
+- Module count: 3 → 2 (`schema.py`, `populate.py`)
+
+**Added BHA scenario test file** (`test_bha_scenarios.py`):
+- Created representative test data for 7 case types from the BHA use cases in `sample_table_sql.md`: client (5), alias (4), service (4), clinic (3), unit (4), capacity (6), referral (4)
+- Data dictionary entries set up via `setup_data_dictionary`, tables created and populated in `setUpClass` (Django `TestCase`)
+- Four query tests execute raw SQL against the project DB tables, verifying JOINs and base filters for each search scenario:
+  - **Search and Admit**: client filtered by registry + non-pending status, alias matching via EXISTS subquery (avoids duplicate rows from LEFT JOIN)
+  - **Search My Clients**: client INNER JOIN service (clinic ownership), LEFT JOIN alias, filtered by registry
+  - **Search Beds**: capacity LEFT JOIN clinic, filtered by active status + open clinic
+  - **Incoming Referrals**: referral LEFT JOIN client, INNER JOIN clinic (referring), filtered by on-platform + destination + status
+
+**Design question raised:**
+- Added to `open_questions.md`: when searching across multiple alias-checked fields (e.g., first name AND SSN), should all fields match the *same* alias record, or can they match *different* aliases of the same client? Separate EXISTS subqueries per field allow cross-alias matching; a single combined EXISTS would require same-row matching.
+
+**Key finding: alias JOIN duplication problem:**
+- LEFT JOIN on alias produces multiple rows per client (one per alias), which inflates result sets
+- Resolved by using EXISTS subqueries instead of JOINs for alias-based filtering — alias table consulted only for matching, not pulled into result set
+- EXISTS approach also generalizes cleanly to multi-field alias searches (each field gets its own EXISTS, or one combined EXISTS — pending the open question above)
