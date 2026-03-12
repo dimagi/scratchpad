@@ -192,6 +192,17 @@ Created `open-questions` skill and `open_questions.md`; updated `CLAUDE.md` to r
 - **`CLAUDE.md` updated**: Added Open Questions section to Collaboration instructions; updated Document Conventions to note that design doc "Open Questions" sections should cross-reference `open_questions.md`.
 
 **Noted from remote pull**: `project_db_design.md` updated — column naming convention changed from single underscore (`prop_name`, `prop_name_date`) to double underscore (`prop__name`, `prop__name__date`) as separator between namespace and property name.
+## 2026-03-12 16:32 UTC — Claude - Woody's session (UTC-6)
+
+Updated `open_questions.md` with data freshness discussion notes from team:
+
+- **Data freshness question updated**: Captured team discussion — in-memory caching ruled out; baseline is async pillow-based updates (acknowledged may not fully satisfy the requirement); preferred path is synchronous write, contingent on performance validation (expected fast: simple transform, single-row upsert, no related data fetch); regular PostgreSQL views preferred over materialized views (reflect updates instantly; materialized views add complexity and constrain synchronous update flexibility, treated as potential optimization only).
+- **New technical question added**: Whether regular PostgreSQL views are performant enough at scale or whether materialized views will be required — must be validated via performance testing before the synchronous write path is finalized.
+- **New technical question added**: How to handle data freshness for cross-case-type relationship queries (e.g., spanning patient + household tables) — synchronous write to a single table is straightforward, but freshness across joined tables is more complex; requires additional design work.
+- **New TODO added**: Build a management command to populate a project DB for BHA domain and run performance benchmarks comparing regular vs. materialized views and async vs. synchronous write paths.
+
+**Noted from remote pull**: `query-builder-implementation-plan.md` updated — expanded from 9 to 10 tasks; Task 10 (Navigation Menu integration) added; "Open Questions (Deferred)" section added within the plan.
+
 ## 2026-03-11 01:30 UTC — Claude - Martin's session (UTC-6)
 
 Completed initial implementation of the query builder and case search endpoints feature on branch `riese/query_builder_claude`. All 9 tasks from the implementation plan executed across multiple sessions.
