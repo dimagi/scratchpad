@@ -36,6 +36,8 @@ Single source of truth for all open questions and uncompleted to-dos. Supersedes
 
 - [ ] **Q:** When `api.py` is built for MCP / programmatic access, what authentication mechanism should it use (API key, OAuth, other)? Not needed for the HTML views but must be decided before MCP work begins. | *Raised:* 2026-03-09 | *By:* Claude - Martin's session | *Docs:* `query_builder_tech_spec.md`
 
+- [ ] **Q:** When searching across multiple fields that can match against aliases (e.g., first name AND SSN), should all fields be required to match on the *same* alias record, or is it acceptable for them to match *different* aliases of the same client? Example: a client has alias A with first name "Maria" and alias B with SSN "111-22-3333". A search for first name "Maria" + SSN "111-22-3333" would match this client if each field uses a separate EXISTS subquery, but would *not* match if a single EXISTS requires all fields to match on one alias row. The choice affects both query correctness and query structure (one EXISTS per field vs. one combined EXISTS). | *Raised:* 2026-03-12 | *By:* Ethan | *Docs:* `sample_table_sql.md`, `project_db_design.md`
+
 ---
 
 ## Prioritization Questions
