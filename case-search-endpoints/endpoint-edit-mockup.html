@@ -158,13 +158,12 @@
     background: var(--cc-primary-hover);
     border-color: var(--cc-primary-hover);
   }
-  .btn-success {
-    background: var(--cc-success);
-    border-color: var(--cc-success);
+  .btn-outline-primary {
+    --bs-btn-color: var(--cc-primary);
+    --bs-btn-border-color: var(--cc-primary);
+    --bs-btn-hover-bg: var(--cc-primary);
+    --bs-btn-hover-border-color: var(--cc-primary);
   }
-  .btn-success:hover { background: #2d7320; border-color: #2d7320; }
-  .btn-outline-secondary { color: #685c53; border-color: #d6d6d4; }
-  .btn-outline-secondary:hover { background: #f2f2f1; color: #1c2126; border-color: #c0c0be; }
 
   .form-control:focus, .form-select:focus {
     border-color: var(--cc-primary);
@@ -528,38 +527,6 @@
     background: var(--depth-1);
   }
 
-  .btn-add-cond {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
-    border-radius: 4px;
-    border: none;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    transition: background 0.15s;
-    background: var(--cc-primary);
-    color: white;
-  }
-  .btn-add-cond:hover { background: var(--cc-primary-hover); }
-  .btn-add-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
-    border-radius: 4px;
-    border: 1px dashed #d6d6d4;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    background: transparent;
-    color: var(--cc-primary);
-    transition: background 0.15s, border-color 0.15s;
-  }
-  .btn-add-group:hover { border-color: var(--cc-primary); background: var(--cc-primary-dim); }
 
   /* ── Mockup badge ── */
   .mockup-badge {
@@ -694,7 +661,7 @@
                 <input class="form-check-input" type="checkbox" checked />
                 <span class="form-check-label">Required</span>
               </label>
-              <button class="param-delete-btn" title="Remove">
+              <button class="param-delete-btn" title="Remove" aria-label="Remove parameter">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
             </div>
@@ -712,7 +679,7 @@
                 <input class="form-check-input" type="checkbox" />
                 <span class="form-check-label">Required</span>
               </label>
-              <button class="param-delete-btn" title="Remove">
+              <button class="param-delete-btn" title="Remove" aria-label="Remove parameter">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
             </div>
@@ -730,13 +697,13 @@
                 <input class="form-check-input" type="checkbox" />
                 <span class="form-check-label">Required</span>
               </label>
-              <button class="param-delete-btn" title="Remove">
+              <button class="param-delete-btn" title="Remove" aria-label="Remove parameter">
                 <i class="fa-solid fa-trash-can"></i>
               </button>
             </div>
             <!-- Add parameter -->
             <div style="margin-top: 10px;">
-              <button class="btn-add-cond">
+              <button class="btn btn-primary btn-sm">
                 <i class="fa-solid fa-plus"></i> Add Parameter
               </button>
             </div>
@@ -763,7 +730,7 @@
                   </div>
                   <span class="group-label">match all of the following</span>
                   <div class="group-actions">
-                    <button title="Remove group"><i class="fa-solid fa-trash-can"></i></button>
+                    <button title="Remove group" aria-label="Remove group"><i class="fa-solid fa-trash-can"></i></button>
                   </div>
                 </div>
 
@@ -787,15 +754,15 @@
                     </select>
                     <div class="value-input-group">
                       <div class="value-source-toggle">
-                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
-                        <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
-                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value" aria-label="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                        <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter" aria-label="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())" aria-label="Auto-value"><i class="fa-solid fa-bolt"></i></button>
                       </div>
                       <span class="value-ref-badge value-ref-badge--param">
                         <i class="fa-solid fa-cube"></i> search_province
                       </span>
                     </div>
-                    <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="cond-delete-btn" title="Remove" aria-label="Remove condition"><i class="fa-solid fa-trash-can"></i></button>
                   </div>
 
                   <!-- Condition 2: age >= param:min_age -->
@@ -817,15 +784,15 @@
                     </select>
                     <div class="value-input-group">
                       <div class="value-source-toggle">
-                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
-                        <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
-                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value" aria-label="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                        <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter" aria-label="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                        <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())" aria-label="Auto-value"><i class="fa-solid fa-bolt"></i></button>
                       </div>
                       <span class="value-ref-badge value-ref-badge--param">
                         <i class="fa-solid fa-cube"></i> min_age
                       </span>
                     </div>
-                    <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="cond-delete-btn" title="Remove" aria-label="Remove condition"><i class="fa-solid fa-trash-can"></i></button>
                   </div>
 
                   <!-- Nested OR group -->
@@ -840,7 +807,7 @@
                       </div>
                       <span class="group-label">match any of the following</span>
                       <div class="group-actions">
-                        <button title="Remove group"><i class="fa-solid fa-trash-can"></i></button>
+                        <button title="Remove group" aria-label="Remove group"><i class="fa-solid fa-trash-can"></i></button>
                       </div>
                     </div>
 
@@ -864,13 +831,13 @@
                         </select>
                         <div class="value-input-group">
                           <div class="value-source-toggle">
-                            <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
-                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
-                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                            <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value" aria-label="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter" aria-label="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())" aria-label="Auto-value"><i class="fa-solid fa-bolt"></i></button>
                           </div>
                           <input type="text" class="value-field" value="active" placeholder="value…" />
                         </div>
-                        <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                        <button class="cond-delete-btn" title="Remove" aria-label="Remove condition"><i class="fa-solid fa-trash-can"></i></button>
                       </div>
 
                       <!-- OR child 2: last_modified after auto:today() -->
@@ -891,22 +858,22 @@
                         </select>
                         <div class="value-input-group">
                           <div class="value-source-toggle">
-                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value"><i class="fa-solid fa-quote-right"></i></button>
-                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
-                            <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())"><i class="fa-solid fa-bolt"></i></button>
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Constant value" aria-label="Constant value"><i class="fa-solid fa-quote-right"></i></button>
+                            <button class="value-source-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Endpoint parameter" aria-label="Endpoint parameter"><i class="fa-solid fa-cube"></i></button>
+                            <button class="value-source-btn active" data-bs-toggle="tooltip" data-bs-placement="top" title="Auto-value (e.g. today())" aria-label="Auto-value"><i class="fa-solid fa-bolt"></i></button>
                           </div>
                           <span class="value-ref-badge value-ref-badge--auto">
                             <i class="fa-solid fa-bolt"></i> today()
                           </span>
                         </div>
-                        <button class="cond-delete-btn" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                        <button class="cond-delete-btn" title="Remove" aria-label="Remove condition"><i class="fa-solid fa-trash-can"></i></button>
                       </div>
 
                       <div class="group-add-bar">
-                        <button class="btn-add-cond">
+                        <button class="btn btn-primary btn-sm">
                           <i class="fa-solid fa-plus"></i> Add Condition
                         </button>
-                        <button class="btn-add-group">
+                        <button class="btn btn-outline-primary btn-sm">
                           <i class="fa-solid fa-code-branch"></i> Add Group
                         </button>
                       </div>
@@ -915,10 +882,10 @@
 
                   <!-- Root group add bar -->
                   <div class="group-add-bar">
-                    <button class="btn-add-cond">
+                    <button class="btn btn-primary btn-sm">
                       <i class="fa-solid fa-plus"></i> Add Condition
                     </button>
-                    <button class="btn-add-group">
+                    <button class="btn btn-outline-primary btn-sm">
                       <i class="fa-solid fa-code-branch"></i> Add Group
                     </button>
                   </div>
@@ -935,7 +902,7 @@
           <button class="btn btn-primary btn-sm">
             <i class="fa-solid fa-floppy-disk me-1"></i> Create New Version (v3)
           </button>
-          <a href="endpoint-list-mockup.html" class="btn btn-outline-secondary btn-sm">
+          <a href="endpoint-list-mockup.html" class="btn btn-outline-primary btn-sm">
             Cancel
           </a>
         </div>

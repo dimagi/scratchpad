@@ -26,6 +26,8 @@ corehq/apps/case_search/
 ├── endpoint_service.py        (new — business logic for endpoints)
 ├── endpoint_capability.py     (new — builds capability JSON from data dictionary)
 ├── api.py                     (new, future — MCP / programmatic access)
+├── views/
+│   └── endpoints.py           (new — endpoint views extracted from views.py)
 ├── templates/case_search/
 │   ├── endpoint_list.html          (new)
 │   ├── endpoint_edit.html          (new)
@@ -33,14 +35,14 @@ corehq/apps/case_search/
 │       └── query_builder.html      (new — standalone, reusable)
 └── tests/
     ├── test_endpoint_service.py    (new)
-    └── test_endpoint_capability.py (new)
+    ├── test_endpoint_capability.py (new)
+    └── test_endpoint_views.py      (new)
 ```
 
 Existing files modified:
 - `models.py` — add `CaseSearchEndpoint`, `CaseSearchEndpointVersion`
-- `views.py` — add new endpoint views
-- `urls.py` — add new URL patterns
-- `tests/test_views.py` — add endpoint view tests
+- `urls.py` — add new URL patterns, importing endpoint views directly from `views/endpoints.py`
+- `tests/test_views.py` — existing view tests unaffected
 
 ---
 
@@ -76,7 +78,7 @@ Views return 404 if the flag is off for the domain.
 | `id`             | AutoField    | Primary key                                 |
 | `endpoint`       | FK           | → `CaseSearchEndpoint`                      |
 | `version_number` | IntegerField | Scoped per endpoint, starts at 1, increments on each save |
-| `parameters`     | JSONField    | Admin-defined params: `[{name, type}, ...]` |
+| `parameters`     | JSONField    | Admin-defined params: `[{name, type, required}, ...]` |
 | `query`          | JSONField    | Filter spec tree (see `query_builder_design.md`) |
 | `created_at`     | DateTimeField| Auto-set on creation                        |
 
@@ -264,17 +266,83 @@ parameter to support this expansion.
 
 ## Views and URLs
 
-All views are in `views.py` and call `service.py`. They contain no business
-logic.
+All endpoint views live in `views/endpoints.py`. `urls.py` imports them
+directly from there. They call `service.py` only — no business logic in views.
+
+### URL table
 
 | URL | View | Notes |
 |-----|------|-------|
 | `GET /<domain>/case_search_endpoints/` | `CaseSearchEndpointsView` | Lists active endpoints |
 | `GET/POST /<domain>/case_search_endpoints/new/` | `CaseSearchEndpointNewView` | Create endpoint + first version |
-| `GET/POST /<domain>/case_search_endpoints/<id>/edit/` | `CaseSearchEndpointEditView` | Save new version |
-| `GET /<domain>/case_search_endpoints/<id>/versions/<n>/` | `CaseSearchEndpointVersionView` | Read-only previous version |
+| `GET/POST /<domain>/case_search_endpoints/<id>/edit/` | `CaseSearchEndpointEditView` | Edit current version; also serves historical read-only view via `?version=<n>` |
 | `POST /<domain>/case_search_endpoints/<id>/deactivate/` | `CaseSearchEndpointDeactivateView` | Soft delete |
 | `GET /<domain>/case_search_endpoints/capability/` | `CaseSearchCapabilityView` | Returns capability JSON |
+
+The separate `CaseSearchEndpointVersionView` is no longer needed. When
+`?version=<n>` is supplied and `n` is not the current version, the edit view
+renders in read-only mode — all fields and the save button are disabled and
+a banner indicates the user is viewing a historical version. The version
+selector dropdown navigates between versions via URL replacement.
+
+### Shared mixin
+
+All endpoint views share a common decorator block and repeated lookups.
+Extract these into `CaseSearchEndpointMixin` (modelled on `RoleContextMixin`
+in `corehq/apps/users/views/role.py`):
+
+```python
+_ENDPOINT_DECORATORS = [
+    use_bootstrap5,
+    toggles.CASE_SEARCH_ENDPOINTS.required_decorator(),
+]
+
+class CaseSearchEndpointMixin:
+    """Shared setup for case search endpoint views."""
+
+    @property
+    @memoized
+    def capability(self):
+        return get_capability(self.domain)
+
+    @property
+    @memoized
+    def endpoint(self):
+        return get_endpoint(self.domain, self.kwargs['endpoint_id'])
+
+    def _initial_context(self, version, mode):
+        """Returns the template context fields common to new/edit/readonly."""
+        return {
+            'capability': self.capability,
+            'mode': mode,
+            'initial_parameters': version.parameters if version else [],
+            'initial_query': version.query if version else {'type': 'and', 'children': []},
+            'initial_target_name': (
+                self.endpoint.target_name if hasattr(self, 'endpoint') else ''
+            ),
+        }
+```
+
+Each view is then decorated once at class level:
+
+```python
+@method_decorator(_ENDPOINT_DECORATORS, name='dispatch')
+class CaseSearchEndpointsView(CaseSearchEndpointMixin, BaseProjectDataView):
+    ...
+```
+
+### Private helpers
+
+Logic extracted out of view methods (following the `_update_role_from_view`
+pattern) so it is independently testable:
+
+```python
+def _parse_endpoint_post(request) -> dict:
+    """Parses and returns the JSON body from a new/edit POST request."""
+
+def _endpoint_post_response(endpoint_or_version, domain) -> JsonResponse:
+    """Builds the success JSON response after create or save-new-version."""
+```
 
 The capability view is an HTMX endpoint. The new/edit views embed the
 capability JSON directly in the page (no separate HTMX fetch needed — it
@@ -294,31 +362,35 @@ Bootstrap 5 for styling.
 
 **Alpine.js state:**
 - Filter tree (AND/OR/NOT nodes + leaf component instances)
-- Admin-defined parameters list `[{name, type}]`
+- Admin-defined parameters list `[{name, type, required}]`
 - Selected case type (drives which fields are shown)
+- Read-only mode flag (set when viewing a non-current version)
 
 **UI structure:**
 
 ```
-┌─ Target ──────────────────────────────────┐
-│  Case type: [patient ▾]                   │
-└───────────────────────────────────────────┘
+┌─ Endpoint Details ────────────────────────────────────────┐
+│  Version: [v2 (current) ▾]  Name: [______]                │
+│  Target Type: [Project DB ▾]  Case Type: [patient ▾]      │
+└───────────────────────────────────────────────────────────┘
 
-┌─ Parameters ──────────────────────────────┐
-│  [+ Add parameter]                        │
-│  search_province  text   [×]              │
-│  min_age          number [×]              │
-└───────────────────────────────────────────┘
+┌─ Parameters ──────────────────────────────────────────────┐
+│  [+ Add parameter]                                        │
+│  [T] search_province  text    Required [toggle on]  [×]   │
+│  [#] min_age          number  Required [toggle off] [×]   │
+└───────────────────────────────────────────────────────────┘
 
-┌─ Filter ──────────────────────────────────┐
-│  AND ▾                                    │
-│  ├─ [field ▾]  [operation ▾]  [value ──]  │
-│  ├─ OR ▾                                  │
-│  │  ├─ [field ▾]  [operation ▾]  [value]  │
-│  │  └─ [+ Add condition]                  │
-│  └─ [+ Add condition]  [+ Add group]      │
-└───────────────────────────────────────────┘
+┌─ Filter ──────────────────────────────────────────────────┐
+│  AND ▾                                                    │
+│  ├─ [field ▾]  [operation ▾]  [" | ⬡ | ⚡]  [value ──]   │
+│  ├─ OR ▾                                                  │
+│  │  ├─ [field ▾]  [operation ▾]  [" | ⬡ | ⚡]  [value]   │
+│  │  └─ [+ Add condition]                                  │
+│  └─ [+ Add condition]  [+ Add group]                      │
+└───────────────────────────────────────────────────────────┘
 ```
+
+The version selector dropdown in Endpoint Details lists all versions for the endpoint (`v1`, `v2 (current)`, etc.). Selecting a non-current version reloads the page at `?version=<n>` in read-only mode. The value source toggle (`"` = constant, `⬡` = parameter, `⚡` = auto-value) renders as three icon buttons with tooltips.
 
 **Value slots:** Each leaf node renders input fields for every slot in the
 component's `COMPONENT_INPUT_SCHEMAS` entry. Components with multiple
