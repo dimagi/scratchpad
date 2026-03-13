@@ -294,3 +294,8 @@ Continued project DB work on branch `es/project-db`.
 - Creates missing tables, evolves existing ones (adds new columns/indexes from data dictionary changes)
 - Paginates cases via `CaseReindexAccessor` + `iter_all_rows`, upserts each into the project DB
 - Progress display via `with_progress_bar`
+
+**Added `drop_project_db_tables` management command** (`corehq/apps/project_db/management/commands/drop_project_db_tables.py`):
+- Accepts a domain, looks up all case types (including deprecated), and drops any existing project DB tables
+- Uses SQLAlchemy Table reflection for both existence checks and drops
+- Requires interactive confirmation before dropping
