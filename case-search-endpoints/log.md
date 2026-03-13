@@ -284,3 +284,13 @@ Continued project DB work on branch `es/project-db`.
 - LEFT JOIN on alias produces multiple rows per client (one per alias), which inflates result sets
 - Resolved by using EXISTS subqueries instead of JOINs for alias-based filtering — alias table consulted only for matching, not pulled into result set
 - EXISTS approach also generalizes cleanly to multi-field alias searches (each field gets its own EXISTS, or one combined EXISTS — pending the open question above)
+
+## 2026-03-13 — Claude - Ethan's session (UTC-5)
+
+**Added `populate_project_db` management command** (`corehq/apps/project_db/management/commands/populate_project_db.py`):
+- Accepts a domain argument and populates project DB tables from the data dictionary and live case data
+- Case type selection: `--all` for all active types, or `--case-types client,alias` for a subset. Omitting both prints available case types for the domain.
+- Optional `--since` flag for incremental updates (filters by `server_modified_on`)
+- Creates missing tables, evolves existing ones (adds new columns/indexes from data dictionary changes)
+- Paginates cases via `CaseReindexAccessor` + `iter_all_rows`, upserts each into the project DB
+- Progress display via `with_progress_bar`
