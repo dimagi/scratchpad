@@ -341,6 +341,15 @@ created alongside the table via `metadata.create_all()`.
    `host_id` columns cover the common cases. Non-standard index
    identifiers are simply not captured; support can be added later.
 
+8. **ProjectDB class to manage state**: Currently, callers need to
+   juggle SQLAlchemy engines, MetaData objects, connections, and
+   `search_path` settings. Explore a `ProjectDB(domain)` class that
+   encapsulates this state — holding the engine, schema name, and
+   table references — and provides a clean interface for common
+   operations (sync tables, get a scoped connection, upsert cases).
+   This would reduce the amount of SQLAlchemy knowledge needed by
+   management commands, the change feed processor, and other callers.
+
 ## Out of Scope (For Now)
 
 - User/group/location reference tables (mentioned in the proposal but
