@@ -299,3 +299,54 @@ Continued project DB work on branch `es/project-db`.
 - Accepts a domain, looks up all case types (including deprecated), and drops any existing project DB tables
 - Uses SQLAlchemy Table reflection for both existence checks and drops
 - Requires interactive confirmation before dropping
+
+## 2026-03-16 — Claude - Ethan's session (UTC-5)
+
+SQLAlchemy review and refactoring session. Focus on aligning project DB code with SQLAlchemy 1.3 best practices and existing codebase patterns.
+
+**SQLAlchemy review findings (8 items):**
+1. `autoload_with` without `autoload=True` — broken on 1.3 (fixed)
+2. Transaction-per-upsert in `upsert_case` — architectural issue for backfill (addressed later)
+3. Hand-rolled DDL in `evolve_table` — replaced with idiomatic constructs
+4. `engine.begin()` for reads — minor, deferred
+5. Mixed `select()` syntax — not actually inconsistent on closer inspection
+6. Same as #2
+7. Inspector reuse — premature to optimize
+8. No schema qualification — intentional per design
+
+**Fixes applied:**
+- Fixed `autoload=True` for correct 1.3 table reflection
+- Replaced hand-rolled `CREATE INDEX` with `index.create(bind=conn)` in `evolve_table`
+- Replaced hand-rolled `ALTER TABLE ADD COLUMN` with Alembic `Operations.add_column()`, matching the pattern established in `corehq/apps/userreports/rebuild.py`
+- Investigated UCR's use of Alembic as a library (not migration tool): `compare_metadata()` for schema diffing, `Operations.add_column()` for safe DDL changes
+
+**`upsert_case` refactored to accept a connection:**
+- Changed `upsert_case(engine, table, case_data)` → `upsert_case(conn, table, case_data)`, caller manages transaction scope
+- Added `send_to_project_db(case)` convenience function: resolves table by reflection, manages its own transaction, raises `LookupError` if table doesn't exist
+- Updated `populate_project_db` command to use single transaction per case type instead of per case
+- Added `_upsert` helper to test classes to reduce boilerplate
+
+**Schema-per-domain:**
+- Replaced domain-encoded table names (`projectdb_domain_casetype_hash`) with PostgreSQL schemas (`projectdb_<domain>.<case_type>`)
+- Tables now have clean names (just the case type), schemas provide domain isolation
+- `get_project_db_table_name()` replaced with `get_schema_name(domain)`
+- `create_tables()` now creates schemas before tables via `CREATE SCHEMA IF NOT EXISTS`
+- `evolve_table()` passes `schema=` to inspector and `add_column`
+- Index names simplified: `ix_{case_type}_owner_id` (schema-scoped, no collision)
+- All test teardowns updated to `DROP SCHEMA ... CASCADE`
+- `drop_project_db_tables` command simplified to `DROP SCHEMA CASCADE`
+- BHA scenario tests updated to use `SET LOCAL search_path` for raw SQL queries
+
+**API cleanup:**
+- Added `sync_domain_tables(engine, domain)` — single entry point that reads the data dictionary, creates schema + tables, and evolves existing tables. Replaces manual MetaData + `build_all_table_schemas` + `create_tables` + `evolve_table` orchestration in callers.
+- Renamed `build_tables_for_domain` → `build_all_table_schemas`, `build_table_for_case_type` → `build_table_schema`
+- Made `metadata` parameter optional (defaults to new `MetaData()`) on both `build_all_table_schemas` and `build_table_schema`
+- Simplified `populate_project_db` command and full-stack/BHA tests to use `sync_domain_tables`
+
+**New management commands:**
+- `query_project_db <domain> <sql>` — executes SQL with `SET LOCAL search_path` scoped to the domain's project DB schema, uploads results as CSV via `get_download_url`
+- `describe_project_db <domain>` — reflects all tables in a domain's schema and outputs DDL via SQLAlchemy's `CreateTable`/`CreateIndex` compilers, suitable for feeding to an LLM
+
+**Open questions added to `project_db_design.md`:**
+- Q8: Explore a `ProjectDB(domain)` class to encapsulate engine, schema name, and table references, reducing SQLAlchemy knowledge needed by callers
+- Q9: Restricted database role per domain for true access isolation (beyond `search_path` scoping)
