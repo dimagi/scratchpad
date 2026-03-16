@@ -350,6 +350,18 @@ created alongside the table via `metadata.create_all()`.
    This would reduce the amount of SQLAlchemy knowledge needed by
    management commands, the change feed processor, and other callers.
 
+9. **Restricted database role per domain**: `SET LOCAL search_path`
+   scopes unqualified name resolution but does not prevent access to
+   other schemas via fully-qualified names (e.g. `public.auth_user`).
+   For true domain isolation — especially if we ever expose SQL
+   querying beyond operator shell access — we'd need a PostgreSQL
+   role per domain with `USAGE` and `SELECT` granted only on that
+   domain's project DB schema, and `REVOKE` on `public`. This would
+   require managing role lifecycle (create on domain setup, drop on
+   teardown) and connecting as the restricted role for query
+   execution, likely via a separate engine/connection pool. Worth
+   exploring if project DB queries are ever exposed to non-operators.
+
 ## Out of Scope (For Now)
 
 - User/group/location reference tables (mentioned in the proposal but
