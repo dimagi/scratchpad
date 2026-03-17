@@ -16,9 +16,6 @@ Single source of truth for all open questions and uncompleted to-dos. Supersedes
 
 - [ ] **Q:** Is there sufficient headroom on `rds_pgucr0` (the UCR RDS instance) to absorb project DB write load (one upsert per case change per case type) and read load (case search queries) before launch? A dedicated instance may need to be provisioned instead. | *Raised:* 2026-03-09 | *By:* Claude - Martin's session | *Docs:* `infrastructure_design.md`
 
-- [ ] **Q:** `pg_trgm` and `fuzzystrmatch` extensions are not currently installed on any CommCare HQ database. They are required for `fuzzy_match` and `phonetic_match` SQL backend components. Do these need to be added to commcare-cloud Ansible provisioning before launch, or should these components remain ES-only for the initial release? | *Raised:* 2026-03-09 | *By:* Claude - Martin's session | *Docs:* `infrastructure_design.md`, `query_builder_design.md`
-
-- [ ] **Q:** `within_distance` (geo queries) requires PostGIS, which is not currently installed. What is the priority and timeline for enabling this, if at all? | *Raised:* 2026-03-07 | *By:* Claude - Ethan's session | *Docs:* `infrastructure_design.md`, `query_builder_design.md`
 
 - [ ] **Q:** For cross-case-type querying (e.g., patient + household), how should the joined data structure be represented? Three options: (1) **regular PostgreSQL view** — reflects updates instantly, simpler to maintain, but potentially higher query-time cost at scale; (2) **materialized view** — can be indexed for speed, but requires an explicit refresh strategy and has freshness implications; (3) **no pre-built view — join at query time** — maximum freshness, eliminates view management entirely, but may be slower or more complex to query. Must be validated via performance testing before the synchronous write path is finalized. | *Raised:* 2026-03-12 | *By:* Woody | *Docs:* `project_db_design.md`, `additional_endpoint_requirements.md`
 
@@ -67,6 +64,12 @@ Single source of truth for all open questions and uncompleted to-dos. Supersedes
 ---
 
 ## Resolved
+
+- [x] **Q:** `pg_trgm` and `fuzzystrmatch` extensions are not currently installed on any CommCare HQ database. They are required for `fuzzy_match` and `phonetic_match` SQL backend components. Do these need to be added to commcare-cloud Ansible provisioning before launch, or should these components remain ES-only for the initial release? | *Raised:* 2026-03-09 | *Resolved:* 2026-03-12 | **Answer:** Both extensions are required for launch. Add to commcare-cloud Ansible provisioning for the project DB target database. See TODO in Uncompleted To-Dos. See `infrastructure_design.md`, `query_builder_design.md`.
+
+- [x] **Q:** `within_distance` (geo queries) requires PostGIS, which is not currently installed. What is the priority and timeline for enabling this, if at all? | *Raised:* 2026-03-07 | *Resolved:* 2026-03-12 | **Answer:** PostGIS is required for any USS app using the new project DB case search backend. Must be provisioned before USS apps can use this feature. See `infrastructure_design.md`, `query_builder_design.md`.
+
+- [x] **Q:** When searching across multiple fields that can match against aliases (e.g., first name AND SSN), should all fields be required to match on the same alias record, or is it acceptable for them to match different aliases of the same client? Example: a client has alias A with first name "Maria" and alias B with SSN "111-22-3333". A search for first name "Maria" + SSN "111-22-3333" would match this client if each field uses a separate EXISTS subquery, but would not match if a single EXISTS requires all fields to match on one alias row. The choice affects both query correctness and query structure (one EXISTS per field vs. one combined EXISTS). | *Raised:* 2026-03-12 | *Resolved:* 2026-03-12 | **Answer:** All fields must match on the same alias record. A search for first name "Maria" + SSN "111-22-3333" should only return a client if there is a single alias row where both conditions are true. Use a combined EXISTS subquery requiring all alias-matched fields to satisfy on the same row.
 
 - [x] **Q:** Where should project DB tables be placed — same PostgreSQL instance as the main app DB, a separate database, or a separate cluster? | *Raised:* 2026-03-07 | *Resolved:* 2026-03-09 | **Answer:** Introduce a `project_db` engine ID in `REPORTING_DATABASES` defaulting to the `ucr` alias (`rds_pgucr0`). Deployments needing isolation can point it at a dedicated instance via config only — no code changes required. See `infrastructure_design.md`.
 
