@@ -192,6 +192,14 @@ Created `open-questions` skill and `open_questions.md`; updated `CLAUDE.md` to r
 - **`CLAUDE.md` updated**: Added Open Questions section to Collaboration instructions; updated Document Conventions to note that design doc "Open Questions" sections should cross-reference `open_questions.md`.
 
 **Noted from remote pull**: `project_db_design.md` updated — column naming convention changed from single underscore (`prop_name`, `prop_name_date`) to double underscore (`prop__name`, `prop__name__date`) as separator between namespace and property name.
+## 2026-03-17 12:55 UTC — Claude - Woody's session (UTC-6)
+
+Resolved three open questions in `open_questions.md` based on answers from Woody:
+
+- **`pg_trgm` / `fuzzystrmatch` (resolved):** Both extensions are required for launch — must be added to commcare-cloud Ansible provisioning for the project DB target database. Associated TODO remains in Uncompleted To-Dos.
+- **PostGIS / `within_distance` (resolved):** Required for any USS app using the project DB case search backend. Must be provisioned before USS apps can adopt this feature.
+- **Alias matching (resolved, added directly to Resolved):** When searching across multiple fields that can match against alias records, all fields must match on the same alias row. A combined EXISTS subquery is required — not one EXISTS per field.
+
 ## 2026-03-12 17:06 UTC — Claude - Woody's session (UTC-6)
 
 Updated `open_questions.md` with additional notes from Woody's manual capture on data freshness and cross-case-type querying:
