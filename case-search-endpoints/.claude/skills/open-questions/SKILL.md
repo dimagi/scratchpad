@@ -29,35 +29,58 @@ If yes, capture them before the commit. If no, proceed.
 
 ## Capturing New Questions
 
-1. Run `git pull` to get the latest version of `open_questions.md`
-2. Read `open_questions.md` to check for duplicates
-3. Identify the appropriate category:
+1. Run `git pull --rebase` to get the latest version of `open_questions.md`
+2. **Immediately before editing**, use the Read tool on `open_questions.md` — the tool requires a fresh read or the Edit will fail
+3. Check for duplicates before adding
+4. Identify the appropriate category:
    - **Requirements**: unclear or unresolved requirements
    - **Technical**: unresolved technical design or implementation decisions
    - **Prioritization**: sequencing, scope, or priority decisions
    - **To-Dos**: concrete action items not yet completed (from conversation or `# TODO` in code)
-4. Present inferred questions to the developer for approval before adding:
+5. Present inferred questions to the developer for approval before adding:
    > "I noticed the following open questions from our session — should I add them to `open_questions.md`?"
-5. Append approved items to the appropriate section using the entry format below
-6. Commit and push immediately — do not batch with other changes:
+6. Append approved items to the appropriate section using the entry format below
+7. Commit and push immediately — do not batch with other changes:
 ```bash
 git add open_questions.md && git commit -m "questions: <brief description>" && git push
 ```
 
 ## Resolving Questions
 
-When a question is answered:
+### Single question
 
-1. Run `git pull` first
-2. Move the entry from its active section to the **Resolved** section at the bottom of `open_questions.md`
-3. Add the resolution date and answer to the entry
-4. Update any relevant design documents that referenced the question:
-   - Remove or cross out the question in design doc "Open Questions" sections
-   - Add a brief note pointing to the resolution if helpful
-5. Commit all changed files together:
+When one question is answered:
+
+1. Run `git pull --rebase` first
+2. **Immediately before editing**, use the Read tool on `open_questions.md`
+3. Move the entry from its active section to the **Resolved** section at the bottom of `open_questions.md`
+4. Add the resolution date and answer to the entry
+5. Check whether the question appears (in any form) in design doc "Open Questions" sections — if so, remove or cross-reference it there too
+6. Commit all changed files together:
 ```bash
 git add open_questions.md <affected-docs> && git commit -m "questions: resolve <question summary>" && git push
 ```
+
+### Multiple questions at once
+
+When several answers are provided together:
+
+1. Run `git pull --rebase` first
+2. **Immediately before editing**, use the Read tool on `open_questions.md`
+3. Move all answered entries to the Resolved section in one edit
+4. Check design docs for cross-references to any of the resolved questions and update those too
+5. Commit all changed files in one commit:
+```bash
+git add open_questions.md <affected-docs> && git commit -m "questions: resolve <N> questions — <brief summary>" && git push
+```
+
+### Question answered before it was captured
+
+If a developer answers a question that was never formally added to the active list:
+
+1. Add it **directly to the Resolved section** — do not add it to an active section first
+2. Set both `*Raised:*` and `*Resolved:*` to today's date
+3. Use the resolved entry format below
 
 ## Entry Format
 
