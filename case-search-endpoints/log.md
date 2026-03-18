@@ -4,194 +4,6 @@ Append-only log of significant activity: decisions, concerns raised, alternative
 
 ---
 
-## 2026-03-06 19:00 UTC — Claude (Martin's session, UTC-6)
-
-Created `CLAUDE.md` with project conventions established via conversation with Martin:
-- Three-phase approach: spec/design → implementation plan → implementation
-- AI role: explore alternatives, push back, flag issues, no unilateral decisions
-- Append-only `log.md` for cross-session coordination
-- No code until phase 3
-- Documented domain vocabulary (UCR, pillow, change feed, data dictionary, CLE, project DB)
-
-## 2026-03-06 18:30 UTC — Claude - Martin's session (UTC-6)
-
-Added `.claude/skills/append-log/SKILL.md` — a shared skill for appending to this log consistently across sessions and agents. Skill instructs: pull before appending, read for context/conflicts, use UTC timestamps with author+timezone, commit and push immediately after appending.
-
-## 2026-03-06 20:57 UTC — Claude - Martin's session (UTC-6)
-
-Created `infrastructure_design.md` covering infrastructure requirements for the case search endpoints feature. Investigated production topology via `commcare-hq` and `commcare-cloud` codebases. Key findings and decisions:
-
-- **Multi-tenancy**: Same flat-schema, name-based approach as UCR (`projectdb_<domain>_<case_type>_<hash>`). No schema-per-domain or DB-per-domain isolation.
-- **Database placement**: Introduce `project_db` engine ID in `REPORTING_DATABASES`, defaulting to `ucr` alias (already isolated on its own RDS instance). Deployments needing more isolation can point it at a dedicated instance via config only, no code change.
-- **Backend-agnostic endpoint**: Global `CASE_SEARCH_BACKEND` setting selects ES or SQL. Factory function resolves backend at call time. Swapping requires only config change + redeploy.
-- **Partitioning**: No PG table partitioning needed initially — tables are naturally scoped by domain+case_type. PL/Proxy sharding does not apply. FK constraints should not be enforced (async write order not guaranteed).
-- **Conflict flagged**: `pg_trgm` and `fuzzystrmatch` are **not installed** on any CommCare HQ database in production. The query builder design's `fuzzy_match` and `phonetic_match` SQL components depend on these extensions. They would need to be explicitly added to commcare-cloud provisioning, or be designated ES-only components until that happens.
-- **Open question added**: UCR DB headroom — project DB defaults to sharing `rds_pgucr0`; sizing should be assessed before launch.
-
-## 2026-03-09 — Claude - Ethan's session (UTC-5)
-
-Reviewed Martin's additions (`CLAUDE.md`, `infrastructure_design.md`, `log.md`). Key observations:
-
-- **Infrastructure doc resolves several open questions** from `project_db_design.md`: database placement (Q1), multi-tenancy model (Q2), phonetic/fuzzy search availability (Q4), geo queries (Q5). These should be reconciled — the open questions in `project_db_design.md` can be marked as resolved with cross-references to `infrastructure_design.md`.
-
-- **Remaining open questions** in `project_db_design.md` that are NOT yet addressed by the infrastructure doc: data dictionary completeness (Q3), backfill performance (Q6), relationship ambiguity (Q7).
-
-- **No conflicts detected** between the infrastructure doc and the existing design docs. The decisions are consistent with what was discussed in Ethan's earlier session (SQLAlchemy Core, `ConnectionManager`, FK constraints not enforced, append-only schema evolution).
-
-Prior session activity (Ethan, 2026-03-05 through 2026-03-07):
-
-- Created `query_builder_design.md` — full technical design for the configurable query builder (backend capability declaration, component catalog, filter spec JSON format, auto-defined values, UI rendering logic)
-- Created `project_db_design.md` — technical design for auto-generated PostgreSQL tables (SQLAlchemy Core, table-per-case-type, typed columns, FK relationships, upsert-based population, cross-relationship JOINs)
-- Created `case-search-endpoints-overview.html` — PM-facing visual summary
-- Created `query-builder-mockup.html` — UI mockup in CommCare form-builder style
-- **Key decisions made**: SQLAlchemy Core (not Django ORM, not raw SQL) for schema/DDL/queries; backend defines operations + field type compatibility (not field-specific); ancestor/subcase queries out of scope for initial design; development to be entirely test-driven
-- **PoC priorities established**: Schema generation → Data population → Cross-relationship queries (JOINs) → Performance at scale → Query translation (deferred)
-
-## 2026-03-09 — Claude - Ethan's session (UTC-5) — Implementation
-
-Implemented the full project DB PoC on branch `es/project-db` in commcare-hq. Used subagent-driven development with TDD. 16 commits total.
-
-**Modules created** (`corehq/apps/project_db/`):
-- `schema.py` — table name generation, SQLAlchemy Table builder (fixed + dynamic + relationship columns), data dictionary integration (`build_tables_for_domain`)
-- `populate.py` — case upsert via `INSERT ... ON CONFLICT`, type coercion (date/number), `case_to_row_dict` bridge from `CommCareCase`
-- `table_manager.py` — DDL creation, append-only schema evolution (add columns + indexes)
-
-**Code review findings addressed:**
-- Fixed `case_json` key collision risk by namespacing dynamic properties under `prop.` prefix in the intermediate dict format
-- Added DDL name validation (regex guard against SQL injection from user-editable property names)
-- Added `owner_id` and `modified_on` indexes per design doc
-- Extended `evolve_table` to create missing indexes alongside missing columns
-
-**Refactoring:**
-- Consolidated 6 modules → 3: `schema_gen` merged into `schema`, `coerce` and `case_adapter` merged into `populate`
-- Organized files by newspaper metaphor (public API at top, private helpers below)
-- Namespaced dynamic properties behind `prop.` prefix in `case_data` dicts, eliminating collision guard
-
-**Test results:**
-- 82 tests passing (schema, DDL, upsert, coercion, case adapter, cross-relationship JOINs)
-- JOIN query performance: ~18ms for 11k rows with parent district filter
-- Performance test file removed from branch (was marked `@slow`, can be recreated)
-
-**Design decision: `prop.` namespace in case_data dicts**
-- Keys use three namespaces: bare names for fixed fields (`case_id`), `prop.<name>` for dynamic properties, `indices` for relationships
-- Maps to column names: `prop.first_name` → `prop_first_name` column
-- Eliminates ambiguity between fixed fields and dynamic properties from `case_json`
-
-## 2026-03-09 18:10 UTC — Claude - Martin's session (UTC-6)
-
-Created `query_builder_tech_spec.md` — implementation spec for the case search endpoints feature. Key decisions made:
-
-- **App location**: `corehq/apps/case_search/` (no new Django app)
-- **Feature flag**: `CASE_SEARCH_ENDPOINTS` domain toggle
-- **Data model**: `CaseSearchEndpoint` (id, domain, name, target_type, target_name, current_version, created_at, is_active) + `CaseSearchEndpointVersion` (id, endpoint, version_number, parameters, query, created_at). Split `target_type`/`target_name` from the start to avoid future migration.
-- **Versioning**: Immutable versions, `current_version` pointer on endpoint, version rows never deleted. Apps can pin to a specific version number.
-- **Deletion**: Soft delete (`is_active = False`) only.
-- **Service layer**: `endpoint_service.py` contains all business logic. Views and future `api.py` (MCP) are thin wrappers calling the same functions.
-- **Capability JSON**: Single endpoint `GET /capability/` returns all case types + fields + operations + auto_values grouped by field type. Source is data dictionary initially. `auto_values` keyed by field type so UI only shows relevant options per slot.
-- **Query builder**: Standalone `partials/query_builder.html`, HTMX + Alpine.js + Bootstrap 5. Receives capability JSON as template variable, has no knowledge of search endpoints context.
-- **Target**: Initially `project_db` only. `target_type`/`target_name` fields allow adding ES and view targets without migration.
-
-## 2026-03-09 18:25 UTC — Claude - Martin's session (UTC-6)
-
-Created `query-builder-implementation-plan.md` — 8-task TDD implementation plan for the query builder and case search endpoints feature. Key decisions resolved with Martin before writing:
-
-- **PASSWORD fields**: Excluded from capability builder (not queryable)
-- **Select field options source**: Data dictionary `CasePropertyAllowedValue` records (option a)
-- **Service file naming**: `endpoint_service.py` (resolves inconsistency in tech spec between file tree and prose)
-- **View base class**: `BaseProjectDataView` (matches `CSQLFixtureExpressionView` pattern)
-
-**Task sequence**: Feature flag → Data models → Service layer → Capability builder → Views + URLs → List template → Edit template → Query builder Alpine.js partial
-
-**Deferred items flagged in plan**:
-- `geopoint`/`within_distance` unusable until PostGIS extensions provisioned (per `infrastructure_design.md`)
-- Hard delete (currently deactivate-only)
-- `api.py` for MCP access
-
-## 2026-03-09 18:42 UTC — Claude - Martin's session (UTC-6)
-
-Revised `query-builder-implementation-plan.md` and `query_builder_tech_spec.md` after plan review. Plan expanded from 8 to 9 tasks. Changes:
-
-- **Added Task 5: Filter spec validation** — `validate_filter_spec()` checks tree structure, field existence, component/field compatibility, input slot completeness, parameter/auto_value refs. Raises `FilterSpecValidationError` caught by views → HTTP 400 + `{"errors": [...]}`. Also handles concurrent version number conflicts via `IntegrityError`.
-- **Added `COMPONENT_INPUT_SCHEMAS`** to capability builder (Task 4) — maps each component to its input slots. Used by both validation and UI rendering. Included in capability JSON response as `component_schemas`.
-- **Multi-slot support in query builder partial** (Task 9) — iterates `component_schemas[component]` instead of assuming single `value` slot. `date_range` now renders `start`/`end` inputs. Labels shown for multi-slot components.
-- **XSS fix**: Replaced `{{ capability|safe }}` with `json_script` template tag in edit template (Task 8). Case property names are user-controlled.
-- **Validation error display**: Added `validationErrors` to Alpine state, error alert with `<ul>` list before save button, cleared on re-save.
-- **Round-trip tests**: Added `TestEndpointRoundTrip` class testing complex nested spec through create → retrieve → new version cycle.
-- **Tech spec updates**: Added "Filter Spec Validation" section, "Component Input Schema" section with full `COMPONENT_INPUT_SCHEMAS` dict, updated UI section to describe multi-slot rendering and `json_script` usage, marked open questions 1 and 2 as resolved.
-
-## 2026-03-10 — Claude - Ethan's session (UTC-5)
-
-Continued project DB work on branch `es/project-db`.
-
-**Relationship support removed:**
-- Removed `relationships_by_type` param from `build_tables_for_domain`, `relationships` param from `build_table_for_case_type`
-- Deleted `_build_relationship_columns`, all `idx_*` column generation, and relationship index creation
-- Removed `indices` key handling from `case_to_row_dict` and `_build_values_dict` in `populate.py`
-- Deleted `test_queries.py` (all cross-case-type JOIN tests)
-- Test count: 82 → 62. Decision: re-add relationships later when design is clearer.
-
-**Added `CaseTable` class** (`schema.py`):
-- Lightweight handle initialized with `(domain, case_type)` for lazy access to project DB table metadata
-- `table_name` — deterministic PG table name (no DB hit, `cached_property`)
-- `dd_case_type` — `CaseType` model from data dictionary (`cached_property`, raises `DoesNotExist`)
-- `get_desired_table_schema()` — SQLAlchemy `Table` built from data dictionary (method, not cached — schema can change between calls)
-- `table_schema` — SQLAlchemy `Table` reflected from PostgreSQL via `autoload_with`, or `None` (`cached_property`, uses try/except `NoSuchTableError` instead of listing all tables)
-- Uses Django's `cached_property` instead of manual sentinel pattern
-
-**Current state:** 70 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
-
-## 2026-03-10 01:58 UTC — Claude - Woody's session (UTC-6)
-
-Created `additional_endpoint_requirements.md` — overflow document for functional and non-functional requirements that don't fit cleanly in other design docs. Document is currently a blank template with sections for functional and non-functional requirements.
-
-## 2026-03-10 — Claude - Ethan's session (UTC-5)
-
-Continued project DB work on branch `es/project-db`.
-
-**Walked back `CaseTable` class:**
-- Removed `CaseTable` and related commits entirely
-- Kept only the table reflection functionality as standalone `get_case_table_schema(domain, case_type)` function
-- Updated full-stack test to use `build_tables_for_domain` directly
-
-**Relationship support re-added with simpler design:**
-- **Decision**: Instead of dynamic `idx_<identifier>` columns derived from relationship metadata, use fixed `parent_id` and `host_id` columns on every table. These cover the two most common `CommCareCaseIndex` identifiers (`parent` and `host`). No FK constraints (async change feed doesn't guarantee write order).
-- Added `parent_id` (Text, nullable) and `host_id` (Text, nullable) to `build_table_for_case_type` fixed columns
-- Both columns get database indexes for JOIN performance
-- `case_to_row_dict` extracts `referenced_id` from `case.live_indices` matching `identifier='parent'` and `identifier='host'`; cases without those indices get NULLs
-- Non-standard index identifiers (custom relationship names) are not captured; can be added later
-- **Open question Q7 (relationship ambiguity) marked resolved** in `project_db_design.md`
-- Updated `project_db_design.md`: fixed columns table, example schema, population example, query example, indexing section
-
-**Test cleanup:**
-- Replaced raw `DROP TABLE` SQL in all test teardowns with `table.drop(engine, checkfirst=True)`
-- Consolidated full-stack test into single test covering data dictionary → schema → DDL → populate → single-table query → cross-case-type JOIN
-
-**Current state:** 74 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
-
-## 2026-03-10 16:09 UTC — Claude - Woody's session (UTC-6)
-
-Added two requirements to `additional_endpoint_requirements.md`:
-
-- **Data Freshness** (functional): Web users must see case updates reflected immediately in subsequent endpoint searches. Two viable approaches documented: synchronous write during form submission, or local memory cache merged with endpoint results. Approach not yet decided.
-- **Performance / USS** (non-functional): p95 targets for US Solutions projects — open case list (search + render): 3s; form submission: 3s.
-
-## 2026-03-10 16:37 UTC — Claude - Woody's session (UTC-6)
-
-Updated `CLAUDE.md` with project goals and process:
-
-- **Goals section** added (expanding the former "Purpose" section): (1) improve developer skills and AI collaboration, producing learnings and a repeatable process transferable to other codebases; (2) determine feasibility of case search endpoints using project DB tables.
-- **Process section** added: research → design → plan → implement cycle per [Claude Superpowers plugin](https://claude.com/plugins/superpowers); artifacts-first principle; smallest-possible-scope per cycle; applies to both human developers and AI agents.
-- **AI Role section** updated to explicitly require following the process before moving to a later phase.
-
-## 2026-03-11 16:00 UTC — Claude - Woody's session (UTC-6)
-
-Created `open-questions` skill and `open_questions.md`; updated `CLAUDE.md` to reference both:
-
-- **New skill**: `.claude/skills/open-questions/SKILL.md` — instructs agents to capture open questions throughout sessions, prompt developers before pushing, and move resolved questions to the Resolved section while updating affected docs.
-- **New file**: `open_questions.md` — single source of truth for all open questions and to-dos, superseding "Open Questions" sections in individual design docs. Populated by migrating all existing open questions from `project_db_design.md`, `infrastructure_design.md`, `query_builder_tech_spec.md`, and `additional_endpoint_requirements.md`. Includes 5 resolved questions and 5 items already resolved in prior sessions.
-- **`CLAUDE.md` updated**: Added Open Questions section to Collaboration instructions; updated Document Conventions to note that design doc "Open Questions" sections should cross-reference `open_questions.md`.
-
-**Noted from remote pull**: `project_db_design.md` updated — column naming convention changed from single underscore (`prop_name`, `prop_name_date`) to double underscore (`prop__name`, `prop__name__date`) as separator between namespace and property name.
 ## 2026-03-17 12:55 UTC — Claude - Woody's session (UTC-6)
 
 Resolved three open questions in `open_questions.md` based on answers from Woody:
@@ -199,115 +11,6 @@ Resolved three open questions in `open_questions.md` based on answers from Woody
 - **`pg_trgm` / `fuzzystrmatch` (resolved):** Both extensions are required for launch — must be added to commcare-cloud Ansible provisioning for the project DB target database. Associated TODO remains in Uncompleted To-Dos.
 - **PostGIS / `within_distance` (resolved):** Required for any USS app using the project DB case search backend. Must be provisioned before USS apps can adopt this feature.
 - **Alias matching (resolved, added directly to Resolved):** When searching across multiple fields that can match against alias records, all fields must match on the same alias row. A combined EXISTS subquery is required — not one EXISTS per field.
-
-## 2026-03-12 17:06 UTC — Claude - Woody's session (UTC-6)
-
-Updated `open_questions.md` with additional notes from Woody's manual capture on data freshness and cross-case-type querying:
-
-- **Q1 (data freshness) — UX consideration added**: If async pillows remain the baseline, could staleness be handled at the UX layer rather than the data layer — e.g., a staleness indicator banner or app navigation restrictions preventing immediate return to a results list after form submission?
-- **"Regular vs. materialized views" question expanded**: Reframed as "how should cross-case-type joined data be represented?" with a third option added — no pre-built view, just a JOIN at query time. Eliminates view management and freshness concerns for views, but may have performance implications.
-- **New technical question added**: How should cross-case-type joined structures be defined and managed for app builders? Options: raw SQL scoped to the project DB, a GUI editor, or developer-hardcoded definitions. Query builder is required regardless.
-
-## 2026-03-12 16:32 UTC — Claude - Woody's session (UTC-6)
-
-Updated `open_questions.md` with data freshness discussion notes from team:
-
-- **Data freshness question updated**: Captured team discussion — in-memory caching ruled out; baseline is async pillow-based updates (acknowledged may not fully satisfy the requirement); preferred path is synchronous write, contingent on performance validation (expected fast: simple transform, single-row upsert, no related data fetch); regular PostgreSQL views preferred over materialized views (reflect updates instantly; materialized views add complexity and constrain synchronous update flexibility, treated as potential optimization only).
-- **New technical question added**: Whether regular PostgreSQL views are performant enough at scale or whether materialized views will be required — must be validated via performance testing before the synchronous write path is finalized.
-- **New technical question added**: How to handle data freshness for cross-case-type relationship queries (e.g., spanning patient + household tables) — synchronous write to a single table is straightforward, but freshness across joined tables is more complex; requires additional design work.
-- **New TODO added**: Build a management command to populate a project DB for BHA domain and run performance benchmarks comparing regular vs. materialized views and async vs. synchronous write paths.
-
-**Noted from remote pull**: `query-builder-implementation-plan.md` updated — expanded from 9 to 10 tasks; Task 10 (Navigation Menu integration) added; "Open Questions (Deferred)" section added within the plan.
-
-## 2026-03-11 01:30 UTC — Claude - Martin's session (UTC-6)
-
-Completed initial implementation of the query builder and case search endpoints feature on branch `riese/query_builder_claude`. All 9 tasks from the implementation plan executed across multiple sessions.
-
-**Commits on branch** (chronological):
-1. Feature flag (`CASE_SEARCH_ENDPOINTS` StaticToggle)
-2. Data models (`CaseSearchEndpoint`, `CaseSearchEndpointVersion`) + migration + migrations.lock
-3. Service layer (`endpoint_service.py`) with validation, domain dump/deletion registration
-4. Capability builder (`endpoint_capability.py`) — reads data dictionary, produces field/operation/component metadata
-5. Views + URL configuration (list, create, edit, version, deactivate, capability API)
-6. Navigation menu entry in `ProjectDataTab`
-7. List template (`endpoint_list.html`)
-8. Edit template (`endpoint_edit.html`) with Alpine.js component
-9. Query builder partial (`query_builder.html`, `_filter_group.html`, `_filter_row.html`)
-10. Bug fix commit: Alpine.js initialization, `json_script` double-encoding, auto_value filtering by field type
-
-**Key implementation patterns discovered**:
-- Alpine.js requires a `{% js_entry %}` tag pointing to a webpack-bundled JS file that imports Alpine and calls `Alpine.start()` — not available globally
-- `Alpine.data()` component definitions must be in the JS entry file, not inline `<script>` blocks
-- Django `{% include %}` recursion causes Python `RecursionError` — solved by inlining one extra nesting level + extracting shared `_filter_row.html`
-- Django `json_script` double-encodes when given string defaults (e.g., `default:"[]"`) — pass actual Python objects from views instead
-- Alpine `x-model` on `<select>` doesn't auto-sync with visually displayed first option — must initialize model value explicitly
-- Nested `x-data` with object references: mutate in place (set `.type`, `.children`) rather than reassigning, to preserve child scope bindings
-- `WebUser` is CouchDB-backed — tests must use `client.login(username, password)`, not `force_login`
-- Views with URL kwargs beyond `domain` must override `page_url` property
-
-**Tests**: `test_endpoint_models.py`, `test_endpoint_service.py`, `test_endpoint_capability.py`, `test_views.py` (including round-trip tests)
-
-## 2026-03-12 22:30 UTC — Claude - Martin's session (UTC-6)
-
-Updated mockups and query builder tech spec to reflect learnings from implementation.
-
-**Mockup changes** (`endpoint-edit-mockup.html`, `endpoint-new-mockup.html`, `endpoint-list-mockup.html`):
-- Replaced custom button styles (`.btn-add-cond`, `.btn-add-group`, `.btn-success`, `.btn-outline-secondary`) with standard Bootstrap 5 classes — reduces custom CSS and aligns with CommCare HQ patterns
-- Added `aria-label` attributes to all icon-only buttons (delete, value source toggles) for accessibility
-- List view: replaced clickable table rows (`onclick`) with explicit "Edit" buttons per row; added "Actions" column header
-- List view: replaced inline `confirm()` with a Bootstrap modal for deactivation confirmation
-- Deleted standalone `query-builder-mockup.html` — the query builder is now embedded directly in the endpoint edit/new mockups, making the standalone version redundant
-
-**Tech spec changes** (`query_builder_tech_spec.md`):
-- Added `views/endpoints.py` to file tree — endpoint views extracted from `views.py` (discovered during implementation that a separate file is cleaner)
-- Added `test_endpoint_views.py` to file tree
-- Documented `CaseSearchEndpointMixin` shared mixin pattern (modelled on `RoleContextMixin`)
-- Documented `_parse_endpoint_post` and `_endpoint_post_response` private helpers
-- Removed separate `CaseSearchEndpointVersionView` — version viewing handled via `?version=<n>` query param on the edit view with read-only mode
-- Updated UI structure diagram: added version selector, value source toggle icons (`"` / `⬡` / `⚡`), required toggle per parameter
-- Added `required` field to parameter JSON schema
-
-## 2026-03-12 — Claude - Ethan's session (UTC-5)
-
-Continued project DB work on branch `es/project-db`.
-
-**Refactoring: merged `table_manager.py` into `schema.py`:**
-- Moved `get_project_db_engine`, `create_tables`, and `evolve_table` from `table_manager.py` into `schema.py`
-- Deleted `table_manager.py`, updated all imports across test files
-- Module count: 3 → 2 (`schema.py`, `populate.py`)
-
-**Added BHA scenario test file** (`test_bha_scenarios.py`):
-- Created representative test data for 7 case types from the BHA use cases in `sample_table_sql.md`: client (5), alias (4), service (4), clinic (3), unit (4), capacity (6), referral (4)
-- Data dictionary entries set up via `setup_data_dictionary`, tables created and populated in `setUpClass` (Django `TestCase`)
-- Four query tests execute raw SQL against the project DB tables, verifying JOINs and base filters for each search scenario:
-  - **Search and Admit**: client filtered by registry + non-pending status, alias matching via EXISTS subquery (avoids duplicate rows from LEFT JOIN)
-  - **Search My Clients**: client INNER JOIN service (clinic ownership), LEFT JOIN alias, filtered by registry
-  - **Search Beds**: capacity LEFT JOIN clinic, filtered by active status + open clinic
-  - **Incoming Referrals**: referral LEFT JOIN client, INNER JOIN clinic (referring), filtered by on-platform + destination + status
-
-**Design question raised:**
-- Added to `open_questions.md`: when searching across multiple alias-checked fields (e.g., first name AND SSN), should all fields match the *same* alias record, or can they match *different* aliases of the same client? Separate EXISTS subqueries per field allow cross-alias matching; a single combined EXISTS would require same-row matching.
-
-**Key finding: alias JOIN duplication problem:**
-- LEFT JOIN on alias produces multiple rows per client (one per alias), which inflates result sets
-- Resolved by using EXISTS subqueries instead of JOINs for alias-based filtering — alias table consulted only for matching, not pulled into result set
-- EXISTS approach also generalizes cleanly to multi-field alias searches (each field gets its own EXISTS, or one combined EXISTS — pending the open question above)
-
-## 2026-03-13 — Claude - Ethan's session (UTC-5)
-
-**Added `populate_project_db` management command** (`corehq/apps/project_db/management/commands/populate_project_db.py`):
-- Accepts a domain argument and populates project DB tables from the data dictionary and live case data
-- Case type selection: `--all` for all active types, or `--case-types client,alias` for a subset. Omitting both prints available case types for the domain.
-- Optional `--since` flag for incremental updates (filters by `server_modified_on`)
-- Creates missing tables, evolves existing ones (adds new columns/indexes from data dictionary changes)
-- Paginates cases via `CaseReindexAccessor` + `iter_all_rows`, upserts each into the project DB
-- Progress display via `with_progress_bar`
-
-**Added `drop_project_db_tables` management command** (`corehq/apps/project_db/management/commands/drop_project_db_tables.py`):
-- Accepts a domain, looks up all case types (including deprecated), and drops any existing project DB tables
-- Uses SQLAlchemy Table reflection for both existence checks and drops
-- Requires interactive confirmation before dropping
-
 ## 2026-03-16 — Claude - Ethan's session (UTC-5)
 
 SQLAlchemy review and refactoring session. Focus on aligning project DB code with SQLAlchemy 1.3 best practices and existing codebase patterns.
@@ -358,3 +61,280 @@ SQLAlchemy review and refactoring session. Focus on aligning project DB code wit
 **Open questions added to `project_db_design.md`:**
 - Q8: Explore a `ProjectDB(domain)` class to encapsulate engine, schema name, and table references, reducing SQLAlchemy knowledge needed by callers
 - Q9: Restricted database role per domain for true access isolation (beyond `search_path` scoping)
+## 2026-03-13 — Claude - Ethan's session (UTC-5)
+
+**Added `populate_project_db` management command** (`corehq/apps/project_db/management/commands/populate_project_db.py`):
+- Accepts a domain argument and populates project DB tables from the data dictionary and live case data
+- Case type selection: `--all` for all active types, or `--case-types client,alias` for a subset. Omitting both prints available case types for the domain.
+- Optional `--since` flag for incremental updates (filters by `server_modified_on`)
+- Creates missing tables, evolves existing ones (adds new columns/indexes from data dictionary changes)
+- Paginates cases via `CaseReindexAccessor` + `iter_all_rows`, upserts each into the project DB
+- Progress display via `with_progress_bar`
+
+**Added `drop_project_db_tables` management command** (`corehq/apps/project_db/management/commands/drop_project_db_tables.py`):
+- Accepts a domain, looks up all case types (including deprecated), and drops any existing project DB tables
+- Uses SQLAlchemy Table reflection for both existence checks and drops
+- Requires interactive confirmation before dropping
+## 2026-03-12 22:30 UTC — Claude - Martin's session (UTC-6)
+
+Updated mockups and query builder tech spec to reflect learnings from implementation.
+
+**Mockup changes** (`endpoint-edit-mockup.html`, `endpoint-new-mockup.html`, `endpoint-list-mockup.html`):
+- Replaced custom button styles (`.btn-add-cond`, `.btn-add-group`, `.btn-success`, `.btn-outline-secondary`) with standard Bootstrap 5 classes — reduces custom CSS and aligns with CommCare HQ patterns
+- Added `aria-label` attributes to all icon-only buttons (delete, value source toggles) for accessibility
+- List view: replaced clickable table rows (`onclick`) with explicit "Edit" buttons per row; added "Actions" column header
+- List view: replaced inline `confirm()` with a Bootstrap modal for deactivation confirmation
+- Deleted standalone `query-builder-mockup.html` — the query builder is now embedded directly in the endpoint edit/new mockups, making the standalone version redundant
+
+**Tech spec changes** (`query_builder_tech_spec.md`):
+- Added `views/endpoints.py` to file tree — endpoint views extracted from `views.py` (discovered during implementation that a separate file is cleaner)
+- Added `test_endpoint_views.py` to file tree
+- Documented `CaseSearchEndpointMixin` shared mixin pattern (modelled on `RoleContextMixin`)
+- Documented `_parse_endpoint_post` and `_endpoint_post_response` private helpers
+- Removed separate `CaseSearchEndpointVersionView` — version viewing handled via `?version=<n>` query param on the edit view with read-only mode
+- Updated UI structure diagram: added version selector, value source toggle icons (`"` / `⬡` / `⚡`), required toggle per parameter
+- Added `required` field to parameter JSON schema
+## 2026-03-12 17:06 UTC — Claude - Woody's session (UTC-6)
+
+Updated `open_questions.md` with additional notes from Woody's manual capture on data freshness and cross-case-type querying:
+
+- **Q1 (data freshness) — UX consideration added**: If async pillows remain the baseline, could staleness be handled at the UX layer rather than the data layer — e.g., a staleness indicator banner or app navigation restrictions preventing immediate return to a results list after form submission?
+- **"Regular vs. materialized views" question expanded**: Reframed as "how should cross-case-type joined data be represented?" with a third option added — no pre-built view, just a JOIN at query time. Eliminates view management and freshness concerns for views, but may have performance implications.
+- **New technical question added**: How should cross-case-type joined structures be defined and managed for app builders? Options: raw SQL scoped to the project DB, a GUI editor, or developer-hardcoded definitions. Query builder is required regardless.
+## 2026-03-12 16:32 UTC — Claude - Woody's session (UTC-6)
+
+Updated `open_questions.md` with data freshness discussion notes from team:
+
+- **Data freshness question updated**: Captured team discussion — in-memory caching ruled out; baseline is async pillow-based updates (acknowledged may not fully satisfy the requirement); preferred path is synchronous write, contingent on performance validation (expected fast: simple transform, single-row upsert, no related data fetch); regular PostgreSQL views preferred over materialized views (reflect updates instantly; materialized views add complexity and constrain synchronous update flexibility, treated as potential optimization only).
+- **New technical question added**: Whether regular PostgreSQL views are performant enough at scale or whether materialized views will be required — must be validated via performance testing before the synchronous write path is finalized.
+- **New technical question added**: How to handle data freshness for cross-case-type relationship queries (e.g., spanning patient + household tables) — synchronous write to a single table is straightforward, but freshness across joined tables is more complex; requires additional design work.
+- **New TODO added**: Build a management command to populate a project DB for BHA domain and run performance benchmarks comparing regular vs. materialized views and async vs. synchronous write paths.
+
+**Noted from remote pull**: `query-builder-implementation-plan.md` updated — expanded from 9 to 10 tasks; Task 10 (Navigation Menu integration) added; "Open Questions (Deferred)" section added within the plan.
+## 2026-03-12 — Claude - Ethan's session (UTC-5)
+
+Continued project DB work on branch `es/project-db`.
+
+**Refactoring: merged `table_manager.py` into `schema.py`:**
+- Moved `get_project_db_engine`, `create_tables`, and `evolve_table` from `table_manager.py` into `schema.py`
+- Deleted `table_manager.py`, updated all imports across test files
+- Module count: 3 → 2 (`schema.py`, `populate.py`)
+
+**Added BHA scenario test file** (`test_bha_scenarios.py`):
+- Created representative test data for 7 case types from the BHA use cases in `sample_table_sql.md`: client (5), alias (4), service (4), clinic (3), unit (4), capacity (6), referral (4)
+- Data dictionary entries set up via `setup_data_dictionary`, tables created and populated in `setUpClass` (Django `TestCase`)
+- Four query tests execute raw SQL against the project DB tables, verifying JOINs and base filters for each search scenario:
+  - **Search and Admit**: client filtered by registry + non-pending status, alias matching via EXISTS subquery (avoids duplicate rows from LEFT JOIN)
+  - **Search My Clients**: client INNER JOIN service (clinic ownership), LEFT JOIN alias, filtered by registry
+  - **Search Beds**: capacity LEFT JOIN clinic, filtered by active status + open clinic
+  - **Incoming Referrals**: referral LEFT JOIN client, INNER JOIN clinic (referring), filtered by on-platform + destination + status
+
+**Design question raised:**
+- Added to `open_questions.md`: when searching across multiple alias-checked fields (e.g., first name AND SSN), should all fields match the *same* alias record, or can they match *different* aliases of the same client? Separate EXISTS subqueries per field allow cross-alias matching; a single combined EXISTS would require same-row matching.
+
+**Key finding: alias JOIN duplication problem:**
+- LEFT JOIN on alias produces multiple rows per client (one per alias), which inflates result sets
+- Resolved by using EXISTS subqueries instead of JOINs for alias-based filtering — alias table consulted only for matching, not pulled into result set
+- EXISTS approach also generalizes cleanly to multi-field alias searches (each field gets its own EXISTS, or one combined EXISTS — pending the open question above)
+## 2026-03-11 16:00 UTC — Claude - Woody's session (UTC-6)
+
+Created `open-questions` skill and `open_questions.md`; updated `CLAUDE.md` to reference both:
+
+- **New skill**: `.claude/skills/open-questions/SKILL.md` — instructs agents to capture open questions throughout sessions, prompt developers before pushing, and move resolved questions to the Resolved section while updating affected docs.
+- **New file**: `open_questions.md` — single source of truth for all open questions and to-dos, superseding "Open Questions" sections in individual design docs. Populated by migrating all existing open questions from `project_db_design.md`, `infrastructure_design.md`, `query_builder_tech_spec.md`, and `additional_endpoint_requirements.md`. Includes 5 resolved questions and 5 items already resolved in prior sessions.
+- **`CLAUDE.md` updated**: Added Open Questions section to Collaboration instructions; updated Document Conventions to note that design doc "Open Questions" sections should cross-reference `open_questions.md`.
+
+**Noted from remote pull**: `project_db_design.md` updated — column naming convention changed from single underscore (`prop_name`, `prop_name_date`) to double underscore (`prop__name`, `prop__name__date`) as separator between namespace and property name.
+## 2026-03-11 01:30 UTC — Claude - Martin's session (UTC-6)
+
+Completed initial implementation of the query builder and case search endpoints feature on branch `riese/query_builder_claude`. All 9 tasks from the implementation plan executed across multiple sessions.
+
+**Commits on branch** (chronological):
+1. Feature flag (`CASE_SEARCH_ENDPOINTS` StaticToggle)
+2. Data models (`CaseSearchEndpoint`, `CaseSearchEndpointVersion`) + migration + migrations.lock
+3. Service layer (`endpoint_service.py`) with validation, domain dump/deletion registration
+4. Capability builder (`endpoint_capability.py`) — reads data dictionary, produces field/operation/component metadata
+5. Views + URL configuration (list, create, edit, version, deactivate, capability API)
+6. Navigation menu entry in `ProjectDataTab`
+7. List template (`endpoint_list.html`)
+8. Edit template (`endpoint_edit.html`) with Alpine.js component
+9. Query builder partial (`query_builder.html`, `_filter_group.html`, `_filter_row.html`)
+10. Bug fix commit: Alpine.js initialization, `json_script` double-encoding, auto_value filtering by field type
+
+**Key implementation patterns discovered**:
+- Alpine.js requires a `{% js_entry %}` tag pointing to a webpack-bundled JS file that imports Alpine and calls `Alpine.start()` — not available globally
+- `Alpine.data()` component definitions must be in the JS entry file, not inline `<script>` blocks
+- Django `{% include %}` recursion causes Python `RecursionError` — solved by inlining one extra nesting level + extracting shared `_filter_row.html`
+- Django `json_script` double-encodes when given string defaults (e.g., `default:"[]"`) — pass actual Python objects from views instead
+- Alpine `x-model` on `<select>` doesn't auto-sync with visually displayed first option — must initialize model value explicitly
+- Nested `x-data` with object references: mutate in place (set `.type`, `.children`) rather than reassigning, to preserve child scope bindings
+- `WebUser` is CouchDB-backed — tests must use `client.login(username, password)`, not `force_login`
+- Views with URL kwargs beyond `domain` must override `page_url` property
+
+**Tests**: `test_endpoint_models.py`, `test_endpoint_service.py`, `test_endpoint_capability.py`, `test_views.py` (including round-trip tests)
+## 2026-03-10 16:37 UTC — Claude - Woody's session (UTC-6)
+
+Updated `CLAUDE.md` with project goals and process:
+
+- **Goals section** added (expanding the former "Purpose" section): (1) improve developer skills and AI collaboration, producing learnings and a repeatable process transferable to other codebases; (2) determine feasibility of case search endpoints using project DB tables.
+- **Process section** added: research → design → plan → implement cycle per [Claude Superpowers plugin](https://claude.com/plugins/superpowers); artifacts-first principle; smallest-possible-scope per cycle; applies to both human developers and AI agents.
+- **AI Role section** updated to explicitly require following the process before moving to a later phase.
+## 2026-03-10 16:09 UTC — Claude - Woody's session (UTC-6)
+
+Added two requirements to `additional_endpoint_requirements.md`:
+
+- **Data Freshness** (functional): Web users must see case updates reflected immediately in subsequent endpoint searches. Two viable approaches documented: synchronous write during form submission, or local memory cache merged with endpoint results. Approach not yet decided.
+- **Performance / USS** (non-functional): p95 targets for US Solutions projects — open case list (search + render): 3s; form submission: 3s.
+## 2026-03-10 01:58 UTC — Claude - Woody's session (UTC-6)
+
+Created `additional_endpoint_requirements.md` — overflow document for functional and non-functional requirements that don't fit cleanly in other design docs. Document is currently a blank template with sections for functional and non-functional requirements.
+## 2026-03-10 — Claude - Ethan's session (UTC-5)
+
+Continued project DB work on branch `es/project-db`.
+
+**Walked back `CaseTable` class:**
+- Removed `CaseTable` and related commits entirely
+- Kept only the table reflection functionality as standalone `get_case_table_schema(domain, case_type)` function
+- Updated full-stack test to use `build_tables_for_domain` directly
+
+**Relationship support re-added with simpler design:**
+- **Decision**: Instead of dynamic `idx_<identifier>` columns derived from relationship metadata, use fixed `parent_id` and `host_id` columns on every table. These cover the two most common `CommCareCaseIndex` identifiers (`parent` and `host`). No FK constraints (async change feed doesn't guarantee write order).
+- Added `parent_id` (Text, nullable) and `host_id` (Text, nullable) to `build_table_for_case_type` fixed columns
+- Both columns get database indexes for JOIN performance
+- `case_to_row_dict` extracts `referenced_id` from `case.live_indices` matching `identifier='parent'` and `identifier='host'`; cases without those indices get NULLs
+- Non-standard index identifiers (custom relationship names) are not captured; can be added later
+- **Open question Q7 (relationship ambiguity) marked resolved** in `project_db_design.md`
+- Updated `project_db_design.md`: fixed columns table, example schema, population example, query example, indexing section
+
+**Test cleanup:**
+- Replaced raw `DROP TABLE` SQL in all test teardowns with `table.drop(engine, checkfirst=True)`
+- Consolidated full-stack test into single test covering data dictionary → schema → DDL → populate → single-table query → cross-case-type JOIN
+
+**Current state:** 74 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
+## 2026-03-10 — Claude - Ethan's session (UTC-5)
+
+Continued project DB work on branch `es/project-db`.
+
+**Relationship support removed:**
+- Removed `relationships_by_type` param from `build_tables_for_domain`, `relationships` param from `build_table_for_case_type`
+- Deleted `_build_relationship_columns`, all `idx_*` column generation, and relationship index creation
+- Removed `indices` key handling from `case_to_row_dict` and `_build_values_dict` in `populate.py`
+- Deleted `test_queries.py` (all cross-case-type JOIN tests)
+- Test count: 82 → 62. Decision: re-add relationships later when design is clearer.
+
+**Added `CaseTable` class** (`schema.py`):
+- Lightweight handle initialized with `(domain, case_type)` for lazy access to project DB table metadata
+- `table_name` — deterministic PG table name (no DB hit, `cached_property`)
+- `dd_case_type` — `CaseType` model from data dictionary (`cached_property`, raises `DoesNotExist`)
+- `get_desired_table_schema()` — SQLAlchemy `Table` built from data dictionary (method, not cached — schema can change between calls)
+- `table_schema` — SQLAlchemy `Table` reflected from PostgreSQL via `autoload_with`, or `None` (`cached_property`, uses try/except `NoSuchTableError` instead of listing all tables)
+- Uses Django's `cached_property` instead of manual sentinel pattern
+
+**Current state:** 70 tests passing, 3 production modules (`schema.py`, `populate.py`, `table_manager.py`)
+## 2026-03-09 18:42 UTC — Claude - Martin's session (UTC-6)
+
+Revised `query-builder-implementation-plan.md` and `query_builder_tech_spec.md` after plan review. Plan expanded from 8 to 9 tasks. Changes:
+
+- **Added Task 5: Filter spec validation** — `validate_filter_spec()` checks tree structure, field existence, component/field compatibility, input slot completeness, parameter/auto_value refs. Raises `FilterSpecValidationError` caught by views → HTTP 400 + `{"errors": [...]}`. Also handles concurrent version number conflicts via `IntegrityError`.
+- **Added `COMPONENT_INPUT_SCHEMAS`** to capability builder (Task 4) — maps each component to its input slots. Used by both validation and UI rendering. Included in capability JSON response as `component_schemas`.
+- **Multi-slot support in query builder partial** (Task 9) — iterates `component_schemas[component]` instead of assuming single `value` slot. `date_range` now renders `start`/`end` inputs. Labels shown for multi-slot components.
+- **XSS fix**: Replaced `{{ capability|safe }}` with `json_script` template tag in edit template (Task 8). Case property names are user-controlled.
+- **Validation error display**: Added `validationErrors` to Alpine state, error alert with `<ul>` list before save button, cleared on re-save.
+- **Round-trip tests**: Added `TestEndpointRoundTrip` class testing complex nested spec through create → retrieve → new version cycle.
+- **Tech spec updates**: Added "Filter Spec Validation" section, "Component Input Schema" section with full `COMPONENT_INPUT_SCHEMAS` dict, updated UI section to describe multi-slot rendering and `json_script` usage, marked open questions 1 and 2 as resolved.
+## 2026-03-09 18:25 UTC — Claude - Martin's session (UTC-6)
+
+Created `query-builder-implementation-plan.md` — 8-task TDD implementation plan for the query builder and case search endpoints feature. Key decisions resolved with Martin before writing:
+
+- **PASSWORD fields**: Excluded from capability builder (not queryable)
+- **Select field options source**: Data dictionary `CasePropertyAllowedValue` records (option a)
+- **Service file naming**: `endpoint_service.py` (resolves inconsistency in tech spec between file tree and prose)
+- **View base class**: `BaseProjectDataView` (matches `CSQLFixtureExpressionView` pattern)
+
+**Task sequence**: Feature flag → Data models → Service layer → Capability builder → Views + URLs → List template → Edit template → Query builder Alpine.js partial
+
+**Deferred items flagged in plan**:
+- `geopoint`/`within_distance` unusable until PostGIS extensions provisioned (per `infrastructure_design.md`)
+- Hard delete (currently deactivate-only)
+- `api.py` for MCP access
+## 2026-03-09 18:10 UTC — Claude - Martin's session (UTC-6)
+
+Created `query_builder_tech_spec.md` — implementation spec for the case search endpoints feature. Key decisions made:
+
+- **App location**: `corehq/apps/case_search/` (no new Django app)
+- **Feature flag**: `CASE_SEARCH_ENDPOINTS` domain toggle
+- **Data model**: `CaseSearchEndpoint` (id, domain, name, target_type, target_name, current_version, created_at, is_active) + `CaseSearchEndpointVersion` (id, endpoint, version_number, parameters, query, created_at). Split `target_type`/`target_name` from the start to avoid future migration.
+- **Versioning**: Immutable versions, `current_version` pointer on endpoint, version rows never deleted. Apps can pin to a specific version number.
+- **Deletion**: Soft delete (`is_active = False`) only.
+- **Service layer**: `endpoint_service.py` contains all business logic. Views and future `api.py` (MCP) are thin wrappers calling the same functions.
+- **Capability JSON**: Single endpoint `GET /capability/` returns all case types + fields + operations + auto_values grouped by field type. Source is data dictionary initially. `auto_values` keyed by field type so UI only shows relevant options per slot.
+- **Query builder**: Standalone `partials/query_builder.html`, HTMX + Alpine.js + Bootstrap 5. Receives capability JSON as template variable, has no knowledge of search endpoints context.
+- **Target**: Initially `project_db` only. `target_type`/`target_name` fields allow adding ES and view targets without migration.
+## 2026-03-09 — Claude - Ethan's session (UTC-5) — Implementation
+
+Implemented the full project DB PoC on branch `es/project-db` in commcare-hq. Used subagent-driven development with TDD. 16 commits total.
+
+**Modules created** (`corehq/apps/project_db/`):
+- `schema.py` — table name generation, SQLAlchemy Table builder (fixed + dynamic + relationship columns), data dictionary integration (`build_tables_for_domain`)
+- `populate.py` — case upsert via `INSERT ... ON CONFLICT`, type coercion (date/number), `case_to_row_dict` bridge from `CommCareCase`
+- `table_manager.py` — DDL creation, append-only schema evolution (add columns + indexes)
+
+**Code review findings addressed:**
+- Fixed `case_json` key collision risk by namespacing dynamic properties under `prop.` prefix in the intermediate dict format
+- Added DDL name validation (regex guard against SQL injection from user-editable property names)
+- Added `owner_id` and `modified_on` indexes per design doc
+- Extended `evolve_table` to create missing indexes alongside missing columns
+
+**Refactoring:**
+- Consolidated 6 modules → 3: `schema_gen` merged into `schema`, `coerce` and `case_adapter` merged into `populate`
+- Organized files by newspaper metaphor (public API at top, private helpers below)
+- Namespaced dynamic properties behind `prop.` prefix in `case_data` dicts, eliminating collision guard
+
+**Test results:**
+- 82 tests passing (schema, DDL, upsert, coercion, case adapter, cross-relationship JOINs)
+- JOIN query performance: ~18ms for 11k rows with parent district filter
+- Performance test file removed from branch (was marked `@slow`, can be recreated)
+
+**Design decision: `prop.` namespace in case_data dicts**
+- Keys use three namespaces: bare names for fixed fields (`case_id`), `prop.<name>` for dynamic properties, `indices` for relationships
+- Maps to column names: `prop.first_name` → `prop_first_name` column
+- Eliminates ambiguity between fixed fields and dynamic properties from `case_json`
+## 2026-03-09 — Claude - Ethan's session (UTC-5)
+
+Reviewed Martin's additions (`CLAUDE.md`, `infrastructure_design.md`, `log.md`). Key observations:
+
+- **Infrastructure doc resolves several open questions** from `project_db_design.md`: database placement (Q1), multi-tenancy model (Q2), phonetic/fuzzy search availability (Q4), geo queries (Q5). These should be reconciled — the open questions in `project_db_design.md` can be marked as resolved with cross-references to `infrastructure_design.md`.
+
+- **Remaining open questions** in `project_db_design.md` that are NOT yet addressed by the infrastructure doc: data dictionary completeness (Q3), backfill performance (Q6), relationship ambiguity (Q7).
+
+- **No conflicts detected** between the infrastructure doc and the existing design docs. The decisions are consistent with what was discussed in Ethan's earlier session (SQLAlchemy Core, `ConnectionManager`, FK constraints not enforced, append-only schema evolution).
+
+Prior session activity (Ethan, 2026-03-05 through 2026-03-07):
+
+- Created `query_builder_design.md` — full technical design for the configurable query builder (backend capability declaration, component catalog, filter spec JSON format, auto-defined values, UI rendering logic)
+- Created `project_db_design.md` — technical design for auto-generated PostgreSQL tables (SQLAlchemy Core, table-per-case-type, typed columns, FK relationships, upsert-based population, cross-relationship JOINs)
+- Created `case-search-endpoints-overview.html` — PM-facing visual summary
+- Created `query-builder-mockup.html` — UI mockup in CommCare form-builder style
+- **Key decisions made**: SQLAlchemy Core (not Django ORM, not raw SQL) for schema/DDL/queries; backend defines operations + field type compatibility (not field-specific); ancestor/subcase queries out of scope for initial design; development to be entirely test-driven
+- **PoC priorities established**: Schema generation → Data population → Cross-relationship queries (JOINs) → Performance at scale → Query translation (deferred)
+## 2026-03-06 20:57 UTC — Claude - Martin's session (UTC-6)
+
+Created `infrastructure_design.md` covering infrastructure requirements for the case search endpoints feature. Investigated production topology via `commcare-hq` and `commcare-cloud` codebases. Key findings and decisions:
+
+- **Multi-tenancy**: Same flat-schema, name-based approach as UCR (`projectdb_<domain>_<case_type>_<hash>`). No schema-per-domain or DB-per-domain isolation.
+- **Database placement**: Introduce `project_db` engine ID in `REPORTING_DATABASES`, defaulting to `ucr` alias (already isolated on its own RDS instance). Deployments needing more isolation can point it at a dedicated instance via config only, no code change.
+- **Backend-agnostic endpoint**: Global `CASE_SEARCH_BACKEND` setting selects ES or SQL. Factory function resolves backend at call time. Swapping requires only config change + redeploy.
+- **Partitioning**: No PG table partitioning needed initially — tables are naturally scoped by domain+case_type. PL/Proxy sharding does not apply. FK constraints should not be enforced (async write order not guaranteed).
+- **Conflict flagged**: `pg_trgm` and `fuzzystrmatch` are **not installed** on any CommCare HQ database in production. The query builder design's `fuzzy_match` and `phonetic_match` SQL components depend on these extensions. They would need to be explicitly added to commcare-cloud provisioning, or be designated ES-only components until that happens.
+- **Open question added**: UCR DB headroom — project DB defaults to sharing `rds_pgucr0`; sizing should be assessed before launch.
+## 2026-03-06 19:00 UTC — Claude (Martin's session, UTC-6)
+
+Created `CLAUDE.md` with project conventions established via conversation with Martin:
+- Three-phase approach: spec/design → implementation plan → implementation
+- AI role: explore alternatives, push back, flag issues, no unilateral decisions
+- Append-only `log.md` for cross-session coordination
+- No code until phase 3
+- Documented domain vocabulary (UCR, pillow, change feed, data dictionary, CLE, project DB)
+## 2026-03-06 18:30 UTC — Claude - Martin's session (UTC-6)
+
+Added `.claude/skills/append-log/SKILL.md` — a shared skill for appending to this log consistently across sessions and agents. Skill instructs: pull before appending, read for context/conflicts, use UTC timestamps with author+timezone, commit and push immediately after appending.

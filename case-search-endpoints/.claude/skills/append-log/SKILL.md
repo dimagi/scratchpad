@@ -25,10 +25,8 @@ description: Use when recording activity in the project log — after design dec
 <content>
 ```
 
-**Author format examples:**
-- `Martin (UTC-6)`
-- `Claude - Martin's session (UTC-6)`
-- `Claude - Ana's session (UTC+1)`
+**Author format — look this up, do not guess:**
+Check `~/.claude/projects/.../memory/MEMORY.md` for the correct author name and timezone. If not found, check `CLAUDE.md` for the author format examples under the Activity Log section.
 
 **Get current UTC time:**
 ```bash
@@ -40,14 +38,22 @@ date -u +"%Y-%m-%d %H:%M UTC"
 1. Get current UTC timestamp with the command above
 2. Pull the latest version of the repo to minimize conflicts:
 ```bash
-git pull
+git pull --rebase
 ```
-3. Read `log.md` to check for recent entries that might conflict or provide context
-4. Append the new entry at the bottom of `log.md`
+3. **Immediately before editing**, use the Read tool on `log.md` — even if you read it moments ago. The tool requires a fresh read in the same tool call sequence or the Edit will fail.
+4. Insert the new entry at the **top of the existing entries**, immediately below the file header and `---` divider, so the most recent entry is always first.
 5. Commit and push immediately — do not batch with other changes:
 ```bash
 git add log.md && git commit -m "log: <brief description>" && git push
 ```
+
+## Conflict Resolution
+
+If `git pull --rebase` produces a conflict in `log.md`:
+1. Open the file and locate the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)
+2. Keep **both** entries — place the remote entry above, your new entry below
+3. Remove the conflict markers
+4. Run `git rebase --continue`
 
 ## Log File Location
 
