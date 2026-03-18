@@ -4,6 +4,15 @@ Append-only log of significant activity: decisions, concerns raised, alternative
 
 ---
 
+## 2026-03-18 21:32 UTC — Claude - Woody's session (UTC-6)
+
+Added one new skill and updated two existing skills based on friction points identified across sessions:
+
+- **New skill: `session-start`** — formalizes the opening ritual for every session: pull, look up author identity from `MEMORY.md`, read `log.md` and `open_questions.md`, surface a brief orientation summary before starting work. Includes guidance for handling rebase conflicts and leftover uncommitted changes.
+- **Updated skill: `append-log`** — three changes: (1) explicit author lookup instruction pointing to `MEMORY.md` to prevent wrong-name errors; (2) read-before-edit added as a numbered step with explanation; (3) conflict resolution instructions added for `log.md` rebase conflicts.
+- **Updated skill: `open-questions`** — three changes: (1) bulk resolution path for when multiple answers are provided at once; (2) directly-to-resolved path for questions answered before being formally captured; (3) read-before-edit added as a numbered step in both capture and resolve flows.
+- **`log.md` reordered**: entries sorted newest-first (most recent at top) and chronological ordering errors corrected.
+
 ## 2026-03-17 12:55 UTC — Claude - Woody's session (UTC-6)
 
 Resolved three open questions in `open_questions.md` based on answers from Woody:
