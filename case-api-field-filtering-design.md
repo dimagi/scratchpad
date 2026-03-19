@@ -238,5 +238,5 @@ could be added later as an alternative parser producing the same field tree.
 
 ## Documentation
 
-Update the Cases v2 API docs (`commcare-hq.readthedocs.io/api/cases-v2.html`)
-to document the new `fields` and `exclude` parameters.
+Update the Cases v2 API docs (source: `docs/api/cases-v2.rst`) to document
+the new `fields` and `exclude` parameters.
