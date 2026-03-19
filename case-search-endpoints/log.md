@@ -4,6 +4,18 @@ Append-only log of significant activity: decisions, concerns raised, alternative
 
 ---
 
+## 2026-03-19 18:00 UTC — Claude - Woody's session (UTC-6)
+
+Reviewed `test_bha_scenarios.py` (on `es/project-db` branch in commcare-hq) against `sample_table_sql.md` to assess whether the test data and joins are representative of the documented BHA use cases. Discussed findings with Woody and the engineer who wrote the tests. Outcomes captured as five new TODOs in `open_questions.md`:
+
+- **Cross-alias negative test** — add a test case where a client has two aliases (one matching `first_name` only, one matching `last_name` only) and assert the client is not returned when searching both fields. Validates the resolved same-alias-row requirement.
+- **Unit join (1:1, implement now)** — update `test_search_beds` to join `case_unit` via `cap.prop__unit_case_ids = un.case_id`. Production constraint is one unit per capacity record, so `contains()` is not needed for the current implementation.
+- **Unit join (array membership, future)** — once the 1:1 join is validated on staging, pursue `contains()`-style array membership support as a follow-on.
+- **Map coordinates type** — update `map_coordinates` from `plain` text to a PostGIS geopoint type in the test once PostGIS has been implemented. Decision that PostGIS is a launch requirement is already resolved; implementation is not yet complete.
+- **`sample_table_sql.md` column name alignment** — `parent_case_id` and `client_case_id` (used inconsistently across the four query examples as the alias FK) should both be `parent_id` to match the actual column names in the test.
+
+Additional finding flagged (not captured as a TODO since it was already known): `test_search_beds` omits the unit JOIN because `contains()` has no direct SQL equivalent — this is expected and noted in the test itself.
+
 ## 2026-03-18 21:32 UTC — Claude - Woody's session (UTC-6)
 
 Added one new skill and updated two existing skills based on friction points identified across sessions:

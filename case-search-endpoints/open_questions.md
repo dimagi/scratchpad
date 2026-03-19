@@ -61,6 +61,16 @@ Single source of truth for all open questions and uncompleted to-dos. Supersedes
 
 - [ ] **TODO:** Implement type coercion for typed columns (Task 9 in implementation plan). | *Raised:* 2026-03-09 | *By:* Claude - Ethan's session | *Source:* `implementation-plan.md`
 
+- [ ] **TODO:** Add a negative test case to `test_bha_scenarios.py` for cross-alias field matching in Search and Admit. Set up a new client with two aliases — one where only `first_name` matches a search input and another where only `last_name` matches — and assert the client is *not* returned when searching by both first and last name simultaneously. Validates that the combined EXISTS subquery requires all alias-matched fields to be satisfied on the same alias row. | *Raised:* 2026-03-19 | *By:* Claude - Woody's session | *Source:* `test_bha_scenarios.py`, resolved Q on alias-matching logic (same-record requirement)
+
+- [ ] **TODO:** Update `test_search_beds` to include a JOIN on `case_unit` using a simple 1:1 equality check (`cap.prop__unit_case_ids = un.case_id`) and add assertions on `unit_name` in the result set. The production constraint is that a capacity record has exactly one unit, making a `contains()`-style array membership check unnecessary for the current implementation. Once the 1:1 join has been validated on staging, pursue array membership support as a follow-on (see next TODO). | *Raised:* 2026-03-19 | *By:* Claude - Woody's session | *Source:* `test_bha_scenarios.py`, `sample_table_sql.md`
+
+- [ ] **TODO:** Once the 1:1 unit join in `test_search_beds` has been validated on staging, implement support for an array membership check (`contains(cap.unit_case_ids, un.case_id)`) as a follow-on. Update the test and `sample_table_sql.md` accordingly. | *Raised:* 2026-03-19 | *By:* Claude - Woody's session | *Source:* `test_bha_scenarios.py`, `sample_table_sql.md`
+
+- [ ] **TODO:** Update the `map_coordinates` column in `test_bha_scenarios.py` (the `clinic` case type data dictionary definition) from `plain` text to a PostGIS-compatible geopoint type once PostGIS has been provisioned and the implementation is in place. The decision that PostGIS is a launch requirement has been made (see Resolved), but the implementation is not yet complete. | *Raised:* 2026-03-19 | *By:* Claude - Woody's session | *Source:* `test_bha_scenarios.py`, `infrastructure_design.md`
+
+- [ ] **TODO:** Update column names in `sample_table_sql.md` to match the actual column names used in `test_bha_scenarios.py`. Specifically: `parent_case_id` and `client_case_id` (used as alias FK references) should both be `parent_id`; the alias FK join column should be consistent across all four query examples. | *Raised:* 2026-03-19 | *By:* Claude - Woody's session | *Source:* `sample_table_sql.md`, `test_bha_scenarios.py`
+
 ---
 
 ## Resolved
