@@ -48,8 +48,8 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'Button--invisible Button--small Button Button--invisible-noVisuals float-right ml-2';
-    button.title = 'Copy git range-diff command: ' + cmd;
-    button.setAttribute('aria-label', 'Copy git range-diff command');
+    button.title = 'Copy command: ' + cmd;
+    button.setAttribute('aria-label', 'Copy command: ' + cmd);
     button.innerHTML = `<span class="Button-content"><span class="Button-label">${COPY_ICON}</span></span>`;
 
     const label = button.querySelector('.Button-label');
