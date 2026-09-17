@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GitHub PR force-push range-diff command
 // @namespace    https://github.com/dimagi
-// @version      1.2
+// @version      1.3
 // @description  Add a clipboard button beside "Compare" on force-push timeline items that copies a `git fetch` + `git range-diff` command.
 // @author       Ethan Soergel
 // @homepageURL  https://github.com/dimagi/scratchpad/blob/main/gh-forcepush-rangediff.user.js
@@ -20,14 +20,29 @@
   const CHECK_ICON = '<svg aria-hidden="true" height="16" width="16" viewBox="0 0 16 16" fill="currentColor" class="octicon color-fg-success">' +
     '<path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path></svg>';
 
+  // Both sides of the range-diff are measured from the PR's base branch
+  function baseBranch() {
+    for (const script of document.querySelectorAll('script[type="application/json"]')) {
+      const match = script.textContent.match(/"baseBranch":"([^"]+)"/);
+      if (match) return match[1];
+    }
+    const link = document.querySelector('a[data-component="BranchName"][href*="/tree/"]');
+    return link && link.textContent.trim();
+  }
+
   function command(before, after) {
-    return `git fetch origin ${before} ${after} && git range-diff ${before}...${after}`;
+    const base = baseBranch();
+    if (!base) return null;
+    return `git fetch origin ${base} ${before} ${after} && ` +
+           `git range-diff origin/${base} ${before} ${after}`;
   }
 
   function attach(compareLink) {
     if (compareLink.dataset.rangeDiff) return;
     const shas = compareLink.getAttribute('href').match(/\/compare\/([0-9a-f]{7,40})\.\.\.?([0-9a-f]{7,40})/);
     if (!shas) return;
+    const cmd = command(shas[1], shas[2]);
+    if (!cmd) return;
     compareLink.dataset.rangeDiff = '1';
 
     const button = document.createElement('button');
@@ -39,7 +54,7 @@
 
     const label = button.querySelector('.Button-label');
     button.addEventListener('click', () => {
-      navigator.clipboard.writeText(command(shas[1], shas[2])).then(() => {
+      navigator.clipboard.writeText(cmd).then(() => {
         label.innerHTML = CHECK_ICON;
         setTimeout(() => { label.innerHTML = COPY_ICON; }, 1200);
       });
