@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GitHub PR force-push range-diff command
 // @namespace    https://github.com/dimagi
-// @version      1.3
+// @version      1.4
 // @description  Add a clipboard button beside "Compare" on force-push timeline items that copies a `git fetch` + `git range-diff` command.
 // @author       Ethan Soergel
 // @homepageURL  https://github.com/dimagi/scratchpad/blob/main/gh-forcepush-rangediff.user.js
@@ -47,7 +47,8 @@
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'Button--invisible Button--small Button Button--invisible-noVisuals float-right ml-2';
+    const placement = compareLink.classList.contains('Button') ? 'float-right ml-2' : 'ml-1 v-align-middle';
+    button.className = 'Button--invisible Button--small Button Button--invisible-noVisuals ' + placement;
     button.title = 'Copy command: ' + cmd;
     button.setAttribute('aria-label', 'Copy command: ' + cmd);
     button.innerHTML = `<span class="Button-content"><span class="Button-label">${COPY_ICON}</span></span>`;
@@ -63,7 +64,10 @@
     compareLink.insertAdjacentElement('afterend', button);
   }
 
-  const scan = () => document.querySelectorAll('.TimelineItem a.Button[href*="/compare/"]').forEach(attach);
+  // Old timeline: "Compare" is an a.Button in a .TimelineItem.
+  // New timeline (Nov 2026): it's an inline link in a li.prc-Timeline-TimelineItem-<hash>.
+  const COMPARE_LINKS = '.TimelineItem a.Button[href*="/compare/"], li[class*="TimelineItem"] a[href*="/compare/"]';
+  const scan = () => document.querySelectorAll(COMPARE_LINKS).forEach(attach);
 
   new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
   scan();
